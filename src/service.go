@@ -27,6 +27,7 @@ type UserServiceDeps struct {
 	Db     DB
 	Jwt    JwtUtil
 	Bcrypt BCryptUtil
+	Cache  Cache[string, UserDTO]
 }
 
 type userService struct {
@@ -64,6 +65,8 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 		return nil, err
 	}
 
+	u.deps.Cache.Set(result.Id, *result, -1)
+
 	return result, nil
 }
 
@@ -85,7 +88,27 @@ func (u *userService) AuthenticateUser(ctx context.Context, login, password stri
 		return "", err
 	}
 
+	u.deps.Cache.Set(user.Id, *user, -1)
+
 	return jwt, nil
+}
+
+func (u *userService) getUserById(ctx context.Context, userId string) (*UserDTO, error) {
+	if user, ok := u.deps.Cache.Get(userId); ok {
+		return &user, nil
+	}
+
+	user, err := u.deps.Db.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotExists
+	}
+
+	u.deps.Cache.Set(user.Id, *user, -1)
+
+	return user, nil
 }
 
 func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*UserDTO, error) {
@@ -94,12 +117,9 @@ func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*User
 		return nil, ErrUserWrongToken
 	}
 
-	user, err := u.deps.Db.GetUserById(ctx, payload.UserId)
+	user, err := u.getUserById(ctx, payload.UserId)
 	if err != nil {
 		return nil, err
-	}
-	if user == nil {
-		return nil, ErrUserNotExists
 	}
 
 	return user, nil

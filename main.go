@@ -37,6 +37,7 @@ func main() {
 		Jwt:    jwtUtil,
 		Bcrypt: bcryptUtil,
 		Db:     db,
+		Cache:  src.NewCacheInmem[string, src.UserDTO](60 * 60),
 	})
 
 	r := gin.New()
