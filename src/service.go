@@ -10,6 +10,7 @@ var (
 	ErrUserExists        = fmt.Errorf("user with this login already exists")
 	ErrUserWrongPassword = fmt.Errorf("wrong password")
 	ErrUserWrongToken    = fmt.Errorf("bad user token")
+	ErrUserBadPassword   = fmt.Errorf("password must contain at least 8 characters")
 	// ErrUserInternal = fmt.Errorf("unexpected error. contact tech support")
 )
 
@@ -24,10 +25,10 @@ func NewUserService(deps UserServiceDeps) UserService {
 }
 
 type UserServiceDeps struct {
-	Db     DB
-	Jwt    JwtUtil
-	Bcrypt BCryptUtil
-	Cache  Cache[string, UserDTO]
+	Db       DB
+	Jwt      JwtUtil
+	Password PasswordUtil
+	Cache    Cache[string, UserDTO]
 }
 
 type userService struct {
@@ -49,7 +50,11 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 		return nil, ErrUserExists
 	}
 
-	secret, err := u.deps.Bcrypt.HashPassword(params.Password)
+	if err := u.deps.Password.Validate(params.Password); err != nil {
+		return nil, ErrUserBadPassword
+	}
+
+	secret, err := u.deps.Password.Hash(params.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +84,7 @@ func (u *userService) AuthenticateUser(ctx context.Context, login, password stri
 		return "", ErrUserNotExists
 	}
 
-	if !u.deps.Bcrypt.IsPasswordsEqual(password, user.Secret) {
+	if !u.deps.Password.Compare(password, user.Secret) {
 		return "", ErrUserWrongPassword
 	}
 

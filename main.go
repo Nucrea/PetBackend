@@ -31,13 +31,13 @@ func main() {
 	}
 
 	jwtUtil := src.NewJwtUtil(key)
-	bcryptUtil := src.NewBcrypt()
+	passwordUtil := src.NewPasswordUtil()
 	db := src.NewDB(sqlDb)
 	userService := src.NewUserService(src.UserServiceDeps{
-		Jwt:    jwtUtil,
-		Bcrypt: bcryptUtil,
-		Db:     db,
-		Cache:  src.NewCacheInmem[string, src.UserDTO](60 * 60),
+		Jwt:      jwtUtil,
+		Password: passwordUtil,
+		Db:       db,
+		Cache:    src.NewCacheInmem[string, src.UserDTO](60 * 60),
 	})
 
 	r := gin.New()

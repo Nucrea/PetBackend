@@ -31,7 +31,7 @@ func NewUserCreateHandler(userService UserService) gin.HandlerFunc {
 			Password: params.Password,
 			Name:     params.Name,
 		})
-		if err == ErrUserExists {
+		if err == ErrUserExists || err == ErrUserBadPassword {
 			ctx.Data(400, "plain/text", []byte(err.Error()))
 			return
 		}
