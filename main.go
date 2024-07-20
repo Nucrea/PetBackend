@@ -4,7 +4,6 @@ import (
 	"backend/src"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx"
@@ -16,10 +15,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		panic(err)
-	}
+	// keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	connConf, err := pgx.ParseConnectionString("postgres://postgres:postgres@localhost:5432/postgres")
 	if err != nil {
@@ -31,7 +30,7 @@ func main() {
 		panic(err)
 	}
 
-	jwtUtil := src.NewJwtUtil(string(keyBytes))
+	jwtUtil := src.NewJwtUtil(key)
 	bcryptUtil := src.NewBcrypt()
 	db := src.NewDB(sqlDb)
 	userService := src.NewUserService(src.UserServiceDeps{
@@ -46,7 +45,7 @@ func main() {
 
 	userGroup := r.Group("/user")
 	userGroup.POST("/create", src.NewUserCreateHandler(userService))
-	userGroup.POST("/login", src.NewUserCreateHandler(userService))
+	userGroup.POST("/login", src.NewUserLoginHandler(userService))
 
 	dummyGroup := r.Group("/dummy")
 	dummyGroup.Use(src.NewAuthMiddleware(userService))

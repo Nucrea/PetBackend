@@ -21,7 +21,7 @@ type dbImpl struct {
 }
 
 func (d *dbImpl) CreateUser(ctx context.Context, dto UserDTO) (*UserDTO, error) {
-	query := `insert into users (login, secret, name) values (?, ?, ?) returning id;`
+	query := `insert into users (login, secret, name) values ($1, $2, $3) returning id;`
 	row := d.db.QueryRowContext(ctx, query, dto.Login, dto.Secret, dto.Name)
 
 	id := ""
@@ -38,11 +38,11 @@ func (d *dbImpl) CreateUser(ctx context.Context, dto UserDTO) (*UserDTO, error) 
 }
 
 func (d *dbImpl) GetUserById(ctx context.Context, id string) (*UserDTO, error) {
-	query := `select (id, login, secret, name) from users where id = ?;`
+	query := `select id, login, secret, name from users where id = $1;`
 	row := d.db.QueryRowContext(ctx, query, id)
 
 	dto := &UserDTO{}
-	err := row.Scan(dto)
+	err := row.Scan(&dto.Id, &dto.Login, &dto.Secret, &dto.Name)
 	if err == nil {
 		return dto, nil
 	}
@@ -54,11 +54,11 @@ func (d *dbImpl) GetUserById(ctx context.Context, id string) (*UserDTO, error) {
 }
 
 func (d *dbImpl) GetUserByLogin(ctx context.Context, login string) (*UserDTO, error) {
-	query := `select (id, login, secret, name) from users where login = ?;`
+	query := `select id, login, secret, name from users where login = $1;`
 	row := d.db.QueryRowContext(ctx, query, login)
 
 	dto := &UserDTO{}
-	err := row.Scan(dto)
+	err := row.Scan(&dto.Id, &dto.Login, &dto.Secret, &dto.Name)
 	if err == nil {
 		return dto, nil
 	}

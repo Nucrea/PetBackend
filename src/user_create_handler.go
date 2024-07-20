@@ -32,11 +32,11 @@ func NewUserCreateHandler(userService UserService) gin.HandlerFunc {
 			Name:     params.Name,
 		})
 		if err == ErrUserExists {
-			ctx.AbortWithError(400, err)
+			ctx.Data(400, "plain/text", []byte(err.Error()))
 			return
 		}
 		if err != nil {
-			ctx.AbortWithError(500, err)
+			ctx.Data(500, "plain/text", []byte(err.Error()))
 			return
 		}
 
