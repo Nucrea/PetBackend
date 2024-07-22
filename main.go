@@ -1,7 +1,12 @@
 package main
 
 import (
-	"backend/src"
+	"backend/src/handlers"
+	"backend/src/middleware"
+	"backend/src/models"
+	"backend/src/repo"
+	"backend/src/services"
+	"backend/src/utils"
 	"crypto/rand"
 	"crypto/rsa"
 
@@ -30,27 +35,31 @@ func main() {
 		panic(err)
 	}
 
-	jwtUtil := src.NewJwtUtil(key)
-	passwordUtil := src.NewPasswordUtil()
-	db := src.NewDB(sqlDb)
-	userService := src.NewUserService(src.UserServiceDeps{
-		Jwt:      jwtUtil,
-		Password: passwordUtil,
-		Db:       db,
-		Cache:    src.NewCacheInmem[string, src.UserDTO](60 * 60),
-	})
+	jwtUtil := utils.NewJwtUtil(key)
+	passwordUtil := utils.NewPasswordUtil()
+	userRepo := repo.NewUserRepo(sqlDb)
+	userCache := repo.NewCacheInmem[string, models.UserDTO](60 * 60)
+
+	userService := services.NewUserService(
+		services.UserServiceDeps{
+			Jwt:       jwtUtil,
+			Password:  passwordUtil,
+			UserRepo:  userRepo,
+			UserCache: userCache,
+		},
+	)
 
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
 	userGroup := r.Group("/user")
-	userGroup.POST("/create", src.NewUserCreateHandler(userService))
-	userGroup.POST("/login", src.NewUserLoginHandler(userService))
+	userGroup.POST("/create", handlers.NewUserCreateHandler(userService))
+	userGroup.POST("/login", handlers.NewUserLoginHandler(userService))
 
 	dummyGroup := r.Group("/dummy")
-	dummyGroup.Use(src.NewAuthMiddleware(userService))
-	dummyGroup.GET("/", src.NewDummyHandler())
+	dummyGroup.Use(middleware.NewAuthMiddleware(userService))
+	dummyGroup.GET("/", handlers.NewDummyHandler())
 
 	r.Run(":8080")
 }

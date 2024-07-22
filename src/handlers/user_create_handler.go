@@ -1,6 +1,7 @@
-package src
+package handlers
 
 import (
+	"backend/src/services"
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ type createUserOutput struct {
 	Name  string `json:"name"`
 }
 
-func NewUserCreateHandler(userService UserService) gin.HandlerFunc {
+func NewUserCreateHandler(userService services.UserService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		params := createUserInput{}
 		if err := ctx.ShouldBindJSON(&params); err != nil {
@@ -26,12 +27,12 @@ func NewUserCreateHandler(userService UserService) gin.HandlerFunc {
 			return
 		}
 
-		dto, err := userService.CreateUser(ctx, UserCreateParams{
+		dto, err := userService.CreateUser(ctx, services.UserCreateParams{
 			Login:    params.Login,
 			Password: params.Password,
 			Name:     params.Name,
 		})
-		if err == ErrUserExists || err == ErrUserBadPassword {
+		if err == services.ErrUserExists || err == services.ErrUserBadPassword {
 			ctx.Data(400, "plain/text", []byte(err.Error()))
 			return
 		}

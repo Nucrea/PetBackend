@@ -1,6 +1,9 @@
-package src
+package services
 
 import (
+	"backend/src/models"
+	"backend/src/repo"
+	"backend/src/utils"
 	"context"
 	"fmt"
 )
@@ -15,9 +18,9 @@ var (
 )
 
 type UserService interface {
-	CreateUser(ctx context.Context, params UserCreateParams) (*UserDTO, error)
+	CreateUser(ctx context.Context, params UserCreateParams) (*models.UserDTO, error)
 	AuthenticateUser(ctx context.Context, login, password string) (string, error)
-	ValidateToken(ctx context.Context, tokenStr string) (*UserDTO, error)
+	ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error)
 }
 
 func NewUserService(deps UserServiceDeps) UserService {
@@ -25,10 +28,10 @@ func NewUserService(deps UserServiceDeps) UserService {
 }
 
 type UserServiceDeps struct {
-	Db       DB
-	Jwt      JwtUtil
-	Password PasswordUtil
-	Cache    Cache[string, UserDTO]
+	Jwt       utils.JwtUtil
+	Password  utils.PasswordUtil
+	UserRepo  repo.UserRepo
+	UserCache repo.Cache[string, models.UserDTO]
 }
 
 type userService struct {
@@ -41,8 +44,8 @@ type UserCreateParams struct {
 	Name     string
 }
 
-func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (*UserDTO, error) {
-	exisitngUser, err := u.deps.Db.GetUserByLogin(ctx, params.Login)
+func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (*models.UserDTO, error) {
+	exisitngUser, err := u.deps.UserRepo.GetUserByLogin(ctx, params.Login)
 	if err != nil {
 		return nil, err
 	}
@@ -59,24 +62,24 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 		return nil, err
 	}
 
-	user := UserDTO{
+	user := models.UserDTO{
 		Login:  params.Login,
 		Secret: string(secret),
 		Name:   params.Name,
 	}
 
-	result, err := u.deps.Db.CreateUser(ctx, user)
+	result, err := u.deps.UserRepo.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 
-	u.deps.Cache.Set(result.Id, *result, -1)
+	u.deps.UserCache.Set(result.Id, *result, -1)
 
 	return result, nil
 }
 
 func (u *userService) AuthenticateUser(ctx context.Context, login, password string) (string, error) {
-	user, err := u.deps.Db.GetUserByLogin(ctx, login)
+	user, err := u.deps.UserRepo.GetUserByLogin(ctx, login)
 	if err != nil {
 		return "", err
 	}
@@ -88,22 +91,23 @@ func (u *userService) AuthenticateUser(ctx context.Context, login, password stri
 		return "", ErrUserWrongPassword
 	}
 
-	jwt, err := u.deps.Jwt.Create(*user)
+	payload := utils.JwtPayload{UserId: user.Id}
+	jwt, err := u.deps.Jwt.Create(payload)
 	if err != nil {
 		return "", err
 	}
 
-	u.deps.Cache.Set(user.Id, *user, -1)
+	u.deps.UserCache.Set(user.Id, *user, -1)
 
 	return jwt, nil
 }
 
-func (u *userService) getUserById(ctx context.Context, userId string) (*UserDTO, error) {
-	if user, ok := u.deps.Cache.Get(userId); ok {
+func (u *userService) getUserById(ctx context.Context, userId string) (*models.UserDTO, error) {
+	if user, ok := u.deps.UserCache.Get(userId); ok {
 		return &user, nil
 	}
 
-	user, err := u.deps.Db.GetUserById(ctx, userId)
+	user, err := u.deps.UserRepo.GetUserById(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -111,12 +115,12 @@ func (u *userService) getUserById(ctx context.Context, userId string) (*UserDTO,
 		return nil, ErrUserNotExists
 	}
 
-	u.deps.Cache.Set(user.Id, *user, -1)
+	u.deps.UserCache.Set(user.Id, *user, -1)
 
 	return user, nil
 }
 
-func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*UserDTO, error) {
+func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error) {
 	payload, err := u.deps.Jwt.Parse(tokenStr)
 	if err != nil {
 		return nil, ErrUserWrongToken

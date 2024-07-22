@@ -1,12 +1,13 @@
-package src
+package middleware
 
 import (
+	"backend/src/services"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewAuthMiddleware(userService UserService) gin.HandlerFunc {
+func NewAuthMiddleware(userService services.UserService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		token := ctx.GetHeader("X-Auth")
 		if token == "" {
@@ -15,7 +16,7 @@ func NewAuthMiddleware(userService UserService) gin.HandlerFunc {
 		}
 
 		user, err := userService.ValidateToken(ctx, token)
-		if err == ErrUserWrongToken || err == ErrUserNotExists {
+		if err == services.ErrUserWrongToken || err == services.ErrUserNotExists {
 			ctx.AbortWithError(403, err)
 			return
 		}
