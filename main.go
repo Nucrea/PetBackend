@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/args_parser"
 	"backend/config"
 	"backend/src/handlers"
 	"backend/src/middleware"
@@ -19,7 +20,12 @@ import (
 )
 
 func main() {
-	conf, err := config.NewFromFile("./config_example/config.yaml")
+	args, err := args_parser.Parse(os.Args)
+	if err != nil {
+		panic(err)
+	}
+
+	conf, err := config.NewFromFile(args.GetConfigPath())
 	if err != nil {
 		panic(err)
 	}

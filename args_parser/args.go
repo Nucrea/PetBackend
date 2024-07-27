@@ -1,4 +1,4 @@
-package args
+package args_parser
 
 import (
 	"github.com/akamensky/argparse"
@@ -11,7 +11,7 @@ type Args interface {
 func Parse(osArgs []string) (Args, error) {
 	parser := argparse.NewParser("backend", "runs backend")
 
-	s := parser.String("s", "string", &argparse.Options{Required: true, Help: "Path to a config file"})
+	s := parser.String("c", "config", &argparse.Options{Required: true, Help: "Path to a config file"})
 
 	err := parser.Parse(osArgs)
 	if err != nil {
