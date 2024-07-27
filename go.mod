@@ -3,6 +3,7 @@ module backend
 go 1.22.5
 
 require (
+	github.com/akamensky/argparse v1.4.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
