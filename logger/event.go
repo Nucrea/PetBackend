@@ -3,13 +3,20 @@ package logger
 import "github.com/rs/zerolog"
 
 type Event interface {
+	Str(key, val string) Event
 	Err(err error) Event
+
 	Msg(msg string)
 	Msgf(format string, v ...interface{})
 }
 
 type event struct {
 	zerologEvent *zerolog.Event
+}
+
+func (e event) Str(key, val string) Event {
+	e.zerologEvent = e.zerologEvent.Str(key, val)
+	return e
 }
 
 func (e event) Err(err error) Event {

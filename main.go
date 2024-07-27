@@ -38,6 +38,8 @@ func main() {
 		panic(err)
 	}
 
+	logger.Log().Msg("initializing service...")
+
 	conf, err := config.NewFromFile(args.GetConfigPath())
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed parsing config file")
@@ -90,7 +92,7 @@ func main() {
 	}
 
 	r := gin.New()
-	r.Use(gin.Logger())
+	r.Use(middleware.NewRequestLogMiddleware(logger))
 	r.Use(gin.Recovery())
 
 	userGroup := r.Group("/user")
@@ -101,5 +103,11 @@ func main() {
 	dummyGroup.Use(middleware.NewAuthMiddleware(userService))
 	dummyGroup.GET("/", handlers.NewDummyHandler())
 
-	r.Run(fmt.Sprintf(":%d", conf.GetPort()))
+	listenAddr := fmt.Sprintf(":%d", conf.GetPort())
+	logger.Log().Msgf("server listening on %s", listenAddr)
+
+	err = r.Run(listenAddr)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("server stopped with error")
+	}
 }

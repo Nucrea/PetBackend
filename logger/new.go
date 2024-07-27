@@ -40,7 +40,7 @@ func New(opts NewLoggerOpts) (Logger, error) {
 
 	writer := io.MultiWriter(writers...)
 
-	l := zerolog.New(writer).Level(level)
+	l := zerolog.New(writer).Level(level).With().Timestamp().Logger()
 	return &logger{
 		zeroLogger: &l,
 	}, nil
