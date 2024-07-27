@@ -3,6 +3,7 @@ package main
 import (
 	"backend/args_parser"
 	"backend/config"
+	"backend/logger"
 	"backend/src/handlers"
 	"backend/src/middleware"
 	"backend/src/models"
@@ -22,27 +23,37 @@ import (
 )
 
 func main() {
+	debugMode := true
+
 	args, err := args_parser.Parse(os.Args)
+	if err != nil {
+		panic(err)
+	}
+
+	logger, err := logger.New(logger.NewLoggerOpts{
+		Debug:      debugMode,
+		OutputFile: "./log.txt",
+	})
 	if err != nil {
 		panic(err)
 	}
 
 	conf, err := config.NewFromFile(args.GetConfigPath())
 	if err != nil {
-		panic(err)
+		logger.Fatal().Err(err).Msg("failed parsing config file")
 	}
 
 	var key *rsa.PrivateKey
 	{
 		keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
 		if err != nil {
-			panic(err)
+			logger.Fatal().Err(err).Msg("failed reading signing key file")
 		}
 
 		keyPem, _ := pem.Decode(keyRawBytes)
 		key, err = x509.ParsePKCS1PrivateKey(keyPem.Bytes)
 		if err != nil {
-			panic(err)
+			logger.Fatal().Err(err).Msg("failed parsing signing key")
 		}
 	}
 
@@ -51,12 +62,12 @@ func main() {
 		pgConnStr := conf.GetPostgresUrl()
 		connConf, err := pgx.ParseConnectionString(pgConnStr)
 		if err != nil {
-			panic(err)
+			logger.Fatal().Err(err).Msg("failed parsing postgres connection string")
 		}
 
 		sqlDb := stdlib.OpenDB(connConf)
 		if err := sqlDb.Ping(); err != nil {
-			panic(err)
+			logger.Fatal().Err(err).Msg("failed pinging postgres db")
 		}
 	}
 
@@ -73,6 +84,10 @@ func main() {
 			UserCache: userCache,
 		},
 	)
+
+	if !debugMode {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	r := gin.New()
 	r.Use(gin.Logger())
