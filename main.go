@@ -9,7 +9,9 @@ import (
 	"backend/src/repo"
 	"backend/src/services"
 	"backend/src/utils"
+	"crypto/rsa"
 	"crypto/x509"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -30,26 +32,32 @@ func main() {
 		panic(err)
 	}
 
-	keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
-	if err != nil {
-		panic(err)
+	var key *rsa.PrivateKey
+	{
+		keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
+		if err != nil {
+			panic(err)
+		}
+
+		keyPem, _ := pem.Decode(keyRawBytes)
+		key, err = x509.ParsePKCS1PrivateKey(keyPem.Bytes)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	keyPem, _ := pem.Decode(keyRawBytes)
-	key, err := x509.ParsePKCS1PrivateKey(keyPem.Bytes)
-	if err != nil {
-		panic(err)
-	}
+	var sqlDb *sql.DB
+	{
+		pgConnStr := conf.GetPostgresUrl()
+		connConf, err := pgx.ParseConnectionString(pgConnStr)
+		if err != nil {
+			panic(err)
+		}
 
-	pgConnStr := conf.GetPostgresUrl()
-	connConf, err := pgx.ParseConnectionString(pgConnStr)
-	if err != nil {
-		panic(err)
-	}
-
-	sqlDb := stdlib.OpenDB(connConf)
-	if err := sqlDb.Ping(); err != nil {
-		panic(err)
+		sqlDb := stdlib.OpenDB(connConf)
+		if err := sqlDb.Ping(); err != nil {
+			panic(err)
+		}
 	}
 
 	jwtUtil := utils.NewJwtUtil(key)
