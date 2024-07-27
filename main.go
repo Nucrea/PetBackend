@@ -32,7 +32,7 @@ func main() {
 
 	logger, err := logger.New(logger.NewLoggerOpts{
 		Debug:      debugMode,
-		OutputFile: "./log.txt",
+		OutputFile: args.GetLogPath(),
 	})
 	if err != nil {
 		panic(err)
