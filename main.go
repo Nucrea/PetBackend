@@ -1,14 +1,17 @@
 package main
 
 import (
+	"backend/config"
 	"backend/src/handlers"
 	"backend/src/middleware"
 	"backend/src/models"
 	"backend/src/repo"
 	"backend/src/services"
 	"backend/src/utils"
-	"crypto/rand"
-	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx"
@@ -16,16 +19,24 @@ import (
 )
 
 func main() {
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	conf, err := config.NewFromFile("./config_example/config.yaml")
 	if err != nil {
 		panic(err)
 	}
-	// keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
-	// if err != nil {
-	// 	panic(err)
-	// }
 
-	connConf, err := pgx.ParseConnectionString("postgres://postgres:postgres@localhost:5432/postgres")
+	keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
+	if err != nil {
+		panic(err)
+	}
+
+	keyPem, _ := pem.Decode(keyRawBytes)
+	key, err := x509.ParsePKCS1PrivateKey(keyPem.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	pgConnStr := conf.GetPostgresUrl()
+	connConf, err := pgx.ParseConnectionString(pgConnStr)
 	if err != nil {
 		panic(err)
 	}
@@ -61,5 +72,5 @@ func main() {
 	dummyGroup.Use(middleware.NewAuthMiddleware(userService))
 	dummyGroup.GET("/", handlers.NewDummyHandler())
 
-	r.Run(":8080")
+	r.Run(fmt.Sprintf(":%d", conf.GetPort()))
 }

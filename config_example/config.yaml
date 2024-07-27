@@ -1,0 +1,3 @@
+port: 8080
+postgres_url: "postgres://postgres:postgres@localhost:5432/postgres"
+jwt_signing_key: "./config_example/jwt_signing_key"
