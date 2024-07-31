@@ -6,6 +6,8 @@ import (
 	"backend/src/utils"
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -28,10 +30,12 @@ func NewUserService(deps UserServiceDeps) UserService {
 }
 
 type UserServiceDeps struct {
-	Jwt       utils.JwtUtil
-	Password  utils.PasswordUtil
-	UserRepo  repo.UserRepo
-	UserCache repo.Cache[string, models.UserDTO]
+	Jwt             utils.JwtUtil
+	Password        utils.PasswordUtil
+	UserRepo        repo.UserRepo
+	UserCache       repo.Cache[string, models.UserDTO]
+	EmailRepo       repo.EmailRepo
+	ActionTokenRepo repo.ActionTokenRepo
 }
 
 type userService struct {
@@ -39,13 +43,13 @@ type userService struct {
 }
 
 type UserCreateParams struct {
-	Login    string
+	Email    string
 	Password string
 	Name     string
 }
 
 func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (*models.UserDTO, error) {
-	exisitngUser, err := u.deps.UserRepo.GetUserByLogin(ctx, params.Login)
+	exisitngUser, err := u.deps.UserRepo.GetUserByEmail(ctx, params.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +67,7 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	}
 
 	user := models.UserDTO{
-		Login:  params.Login,
+		Email:  params.Email,
 		Secret: string(secret),
 		Name:   params.Name,
 	}
@@ -78,8 +82,8 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	return result, nil
 }
 
-func (u *userService) AuthenticateUser(ctx context.Context, login, password string) (string, error) {
-	user, err := u.deps.UserRepo.GetUserByLogin(ctx, login)
+func (u *userService) AuthenticateUser(ctx context.Context, email, password string) (string, error) {
+	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return "", err
 	}
@@ -100,6 +104,77 @@ func (u *userService) AuthenticateUser(ctx context.Context, login, password stri
 	u.deps.UserCache.Set(user.Id, *user, -1)
 
 	return jwt, nil
+}
+
+func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) error {
+	user, err := u.deps.UserRepo.GetUserById(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(models.ActionTokenDTO{
+		UserId: user.Id,
+		Value:  uuid.New().String(),
+		Target: models.ActionTokenTargetForgotPassword,
+	})
+	if err != nil {
+		return err
+	}
+
+	u.deps.EmailRepo.SendEmailForgotPassword(user.Email, actionToken.Value)
+	return nil
+}
+
+func (u *userService) ChangePasswordForgot(ctx context.Context, userId, newPassword, accessCode string) error {
+	user, err := u.deps.UserRepo.GetUserById(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	code, err := u.deps.ActionTokenRepo.FindActionToken(userId, accessCode, models.ActionTokenTargetForgotPassword)
+	if err != nil {
+		return err
+	}
+	if code == nil {
+		return fmt.Errorf("wrong user access code")
+	}
+
+	if err := u.deps.ActionTokenRepo.DeleteActionToken(code.Id); err != nil {
+		return fmt.Errorf("internal error occured: %w", err)
+	}
+
+	return u.updatePassword(ctx, *user, newPassword)
+}
+
+func (u *userService) ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error {
+	user, err := u.getUserById(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	if !u.deps.Password.Compare(oldPassword, user.Secret) {
+		return ErrUserWrongPassword
+	}
+
+	return u.updatePassword(ctx, *user, newPassword)
+}
+
+func (u *userService) updatePassword(ctx context.Context, user models.UserDTO, newPassword string) error {
+	if err := u.deps.Password.Validate(newPassword); err != nil {
+		return ErrUserBadPassword
+	}
+
+	u.deps.UserCache.Del(user.Id)
+
+	newSecret, err := u.deps.Password.Hash(newPassword)
+	if err != nil {
+		return err
+	}
+
+	return u.deps.UserRepo.UpdateUser(ctx, user.Id, models.UserUpdateDTO{
+		Secret: newSecret,
+		Name:   user.Name,
+	})
 }
 
 func (u *userService) getUserById(ctx context.Context, userId string) (*models.UserDTO, error) {

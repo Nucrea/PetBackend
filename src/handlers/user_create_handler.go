@@ -8,14 +8,14 @@ import (
 )
 
 type createUserInput struct {
-	Login    string
+	Email    string
 	Password string
 	Name     string
 }
 
 type createUserOutput struct {
 	Id    string `json:"id"`
-	Login string `json:"login"`
+	Email string `json:"email"`
 	Name  string `json:"name"`
 }
 
@@ -28,7 +28,7 @@ func NewUserCreateHandler(userService services.UserService) gin.HandlerFunc {
 		}
 
 		dto, err := userService.CreateUser(ctx, services.UserCreateParams{
-			Login:    params.Login,
+			Email:    params.Email,
 			Password: params.Password,
 			Name:     params.Name,
 		})
@@ -43,7 +43,7 @@ func NewUserCreateHandler(userService services.UserService) gin.HandlerFunc {
 
 		resultBody, err := json.Marshal(createUserOutput{
 			Id:    dto.Id,
-			Login: dto.Login,
+			Email: dto.Email,
 			Name:  dto.Name,
 		})
 		if err != nil {
