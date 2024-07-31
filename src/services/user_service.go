@@ -112,11 +112,14 @@ func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) err
 		return err
 	}
 
-	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(models.ActionTokenDTO{
-		UserId: user.Id,
-		Value:  uuid.New().String(),
-		Target: models.ActionTokenTargetForgotPassword,
-	})
+	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(
+		ctx,
+		models.ActionTokenDTO{
+			UserId: user.Id,
+			Value:  uuid.New().String(),
+			Target: models.ActionTokenTargetForgotPassword,
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -131,16 +134,12 @@ func (u *userService) ChangePasswordForgot(ctx context.Context, userId, newPassw
 		return err
 	}
 
-	code, err := u.deps.ActionTokenRepo.FindActionToken(userId, accessCode, models.ActionTokenTargetForgotPassword)
+	code, err := u.deps.ActionTokenRepo.PopActionToken(ctx, userId, accessCode, models.ActionTokenTargetForgotPassword)
 	if err != nil {
 		return err
 	}
 	if code == nil {
 		return fmt.Errorf("wrong user access code")
-	}
-
-	if err := u.deps.ActionTokenRepo.DeleteActionToken(code.Id); err != nil {
-		return fmt.Errorf("internal error occured: %w", err)
 	}
 
 	return u.updatePassword(ctx, *user, newPassword)
