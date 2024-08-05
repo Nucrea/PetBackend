@@ -107,7 +107,7 @@ func (u *userService) AuthenticateUser(ctx context.Context, email, password stri
 }
 
 func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) error {
-	user, err := u.deps.UserRepo.GetUserById(ctx, userId)
+	user, err := u.getUserById(ctx, userId)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) err
 }
 
 func (u *userService) ChangePasswordForgot(ctx context.Context, userId, newPassword, accessCode string) error {
-	user, err := u.deps.UserRepo.GetUserById(ctx, userId)
+	user, err := u.getUserById(ctx, userId)
 	if err != nil {
 		return err
 	}
