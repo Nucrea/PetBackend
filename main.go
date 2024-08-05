@@ -90,6 +90,11 @@ func main() {
 			ActionTokenRepo: actionTokenRepo,
 		},
 	)
+	linkService := services.NewShortlinkSevice(
+		services.NewShortlinkServiceParams{
+			Cache: repo.NewCacheInmem[string, string](7 * 24 * 60 * 60),
+		},
+	)
 
 	if !debugMode {
 		gin.SetMode(gin.ReleaseMode)
@@ -98,6 +103,10 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.NewRequestLogMiddleware(logger))
 	r.Use(gin.Recovery())
+
+	linkGroup := r.Group("/s")
+	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(linkService))
+	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(linkService))
 
 	userGroup := r.Group("/user")
 	userGroup.POST("/create", handlers.NewUserCreateHandler(userService))
