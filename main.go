@@ -67,7 +67,7 @@ func main() {
 			logger.Fatal().Err(err).Msg("failed parsing postgres connection string")
 		}
 
-		sqlDb := stdlib.OpenDB(connConf)
+		sqlDb = stdlib.OpenDB(connConf)
 		if err := sqlDb.Ping(); err != nil {
 			logger.Fatal().Err(err).Msg("failed pinging postgres db")
 		}
@@ -77,13 +77,22 @@ func main() {
 	passwordUtil := utils.NewPasswordUtil()
 	userRepo := repo.NewUserRepo(sqlDb)
 	userCache := repo.NewCacheInmem[string, models.UserDTO](60 * 60)
+	emailRepo := repo.NewEmailRepo()
+	actionTokenRepo := repo.NewActionTokenRepo(sqlDb)
 
 	userService := services.NewUserService(
 		services.UserServiceDeps{
-			Jwt:       jwtUtil,
-			Password:  passwordUtil,
-			UserRepo:  userRepo,
-			UserCache: userCache,
+			Jwt:             jwtUtil,
+			Password:        passwordUtil,
+			UserRepo:        userRepo,
+			UserCache:       userCache,
+			EmailRepo:       emailRepo,
+			ActionTokenRepo: actionTokenRepo,
+		},
+	)
+	linkService := services.NewShortlinkSevice(
+		services.NewShortlinkServiceParams{
+			Cache: repo.NewCacheInmem[string, string](7 * 24 * 60 * 60),
 		},
 	)
 
@@ -94,6 +103,10 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.NewRequestLogMiddleware(logger))
 	r.Use(gin.Recovery())
+
+	linkGroup := r.Group("/s")
+	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(linkService))
+	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(linkService))
 
 	userGroup := r.Group("/user")
 	userGroup.POST("/create", handlers.NewUserCreateHandler(userService))
