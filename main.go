@@ -1,8 +1,6 @@
 package main
 
 import (
-	"backend/args_parser"
-	"backend/config"
 	"backend/logger"
 	"backend/src/handlers"
 	"backend/src/middleware"
@@ -10,6 +8,8 @@ import (
 	"backend/src/repo"
 	"backend/src/services"
 	"backend/src/utils"
+	"backend/utils/args_parser"
+	"backend/utils/config"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
