@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"backend/src/services"
+	"backend/src/core/services"
 	"fmt"
 
 	"github.com/gin-gonic/gin"

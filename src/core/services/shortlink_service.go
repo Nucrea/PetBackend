@@ -1,8 +1,8 @@
 package services
 
 import (
-	"backend/src/repo"
-	"backend/src/utils"
+	"backend/src/core/repos"
+	"backend/src/core/utils"
 	"fmt"
 )
 
@@ -13,7 +13,7 @@ type ShortlinkService interface {
 
 type NewShortlinkServiceParams struct {
 	Endpoint string
-	Cache    repo.Cache[string, string]
+	Cache    repos.Cache[string, string]
 }
 
 func NewShortlinkSevice(params NewShortlinkServiceParams) ShortlinkService {
@@ -25,7 +25,7 @@ func NewShortlinkSevice(params NewShortlinkServiceParams) ShortlinkService {
 
 type shortlinkService struct {
 	randomUtil utils.RandomUtil
-	cache      repo.Cache[string, string]
+	cache      repos.Cache[string, string]
 }
 
 func (s *shortlinkService) CreateLink(in string) (string, error) {

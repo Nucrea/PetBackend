@@ -1,7 +1,7 @@
-package repo
+package repos
 
 import (
-	"backend/src/models"
+	"backend/src/core/models"
 	"context"
 	"database/sql"
 )
