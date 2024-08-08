@@ -21,6 +21,9 @@
 go.work
 go.work.sum
 
+# Binary dir
+.build/
+
 # env file
 .env
 
