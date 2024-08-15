@@ -2,6 +2,7 @@ package main
 
 import (
 	"backend/src/args_parser"
+	"backend/src/client_notifier"
 	"backend/src/config"
 	"backend/src/core/models"
 	"backend/src/core/repos"
@@ -80,6 +81,8 @@ func main() {
 	emailRepo := repos.NewEmailRepo()
 	actionTokenRepo := repos.NewActionTokenRepo(sqlDb)
 
+	clientNotifier := client_notifier.NewBasicNotifier()
+
 	userService := services.NewUserService(
 		services.UserServiceDeps{
 			Jwt:             jwtUtil,
@@ -115,6 +118,9 @@ func main() {
 	dummyGroup := r.Group("/dummy")
 	dummyGroup.Use(middleware.NewAuthMiddleware(userService))
 	dummyGroup.GET("/", handlers.NewDummyHandler())
+
+	lpGroup := r.Group("/pooling")
+	lpGroup.GET("/", handlers.NewLongPoolingHandler(clientNotifier))
 
 	listenAddr := fmt.Sprintf(":%d", conf.GetPort())
 	logger.Log().Msgf("server listening on %s", listenAddr)
