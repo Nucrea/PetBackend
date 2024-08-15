@@ -8,6 +8,7 @@ RUN go mod download && go mod verify
 EXPOSE 8080
 
 COPY . .
-RUN go build -v -o /usr/local/bin/app ./...
+RUN go build -v -o ./app .
+RUN chmod +x ./app
 
-CMD ["app"]
+CMD ["./app", "-c", "./misc/config.yaml"]

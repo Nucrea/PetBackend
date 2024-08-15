@@ -1,9 +1,9 @@
 package services
 
 import (
-	"backend/src/models"
-	"backend/src/repo"
-	"backend/src/utils"
+	"backend/src/core/models"
+	"backend/src/core/repos"
+	"backend/src/core/utils"
 	"context"
 	"fmt"
 
@@ -32,10 +32,10 @@ func NewUserService(deps UserServiceDeps) UserService {
 type UserServiceDeps struct {
 	Jwt             utils.JwtUtil
 	Password        utils.PasswordUtil
-	UserRepo        repo.UserRepo
-	UserCache       repo.Cache[string, models.UserDTO]
-	EmailRepo       repo.EmailRepo
-	ActionTokenRepo repo.ActionTokenRepo
+	UserRepo        repos.UserRepo
+	UserCache       repos.Cache[string, models.UserDTO]
+	EmailRepo       repos.EmailRepo
+	ActionTokenRepo repos.ActionTokenRepo
 }
 
 type userService struct {

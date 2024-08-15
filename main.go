@@ -1,15 +1,16 @@
 package main
 
 import (
-	"backend/args_parser"
-	"backend/config"
-	"backend/logger"
-	"backend/src/handlers"
-	"backend/src/middleware"
-	"backend/src/models"
-	"backend/src/repo"
-	"backend/src/services"
-	"backend/src/utils"
+	"backend/src/args_parser"
+	"backend/src/client_notifier"
+	"backend/src/config"
+	"backend/src/core/models"
+	"backend/src/core/repos"
+	"backend/src/core/services"
+	"backend/src/core/utils"
+	"backend/src/logger"
+	"backend/src/server/handlers"
+	"backend/src/server/middleware"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
@@ -75,10 +76,12 @@ func main() {
 
 	jwtUtil := utils.NewJwtUtil(key)
 	passwordUtil := utils.NewPasswordUtil()
-	userRepo := repo.NewUserRepo(sqlDb)
-	userCache := repo.NewCacheInmem[string, models.UserDTO](60 * 60)
-	emailRepo := repo.NewEmailRepo()
-	actionTokenRepo := repo.NewActionTokenRepo(sqlDb)
+	userRepo := repos.NewUserRepo(sqlDb)
+	userCache := repos.NewCacheInmem[string, models.UserDTO](60 * 60)
+	emailRepo := repos.NewEmailRepo()
+	actionTokenRepo := repos.NewActionTokenRepo(sqlDb)
+
+	clientNotifier := client_notifier.NewBasicNotifier()
 
 	userService := services.NewUserService(
 		services.UserServiceDeps{
@@ -92,7 +95,7 @@ func main() {
 	)
 	linkService := services.NewShortlinkSevice(
 		services.NewShortlinkServiceParams{
-			Cache: repo.NewCacheInmem[string, string](7 * 24 * 60 * 60),
+			Cache: repos.NewCacheInmem[string, string](7 * 24 * 60 * 60),
 		},
 	)
 
@@ -115,6 +118,9 @@ func main() {
 	dummyGroup := r.Group("/dummy")
 	dummyGroup.Use(middleware.NewAuthMiddleware(userService))
 	dummyGroup.GET("/", handlers.NewDummyHandler())
+
+	lpGroup := r.Group("/pooling")
+	lpGroup.GET("/", handlers.NewLongPoolingHandler(clientNotifier))
 
 	listenAddr := fmt.Sprintf(":%d", conf.GetPort())
 	logger.Log().Msgf("server listening on %s", listenAddr)

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"backend/src/services"
+	"backend/src/core/services"
 	"encoding/json"
 	"fmt"
 	"net/url"

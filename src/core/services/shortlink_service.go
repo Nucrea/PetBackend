@@ -1,11 +1,9 @@
 package services
 
 import (
-	"backend/src/repo"
+	"backend/src/core/repos"
+	"backend/src/core/utils"
 	"fmt"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 type ShortlinkService interface {
@@ -15,38 +13,23 @@ type ShortlinkService interface {
 
 type NewShortlinkServiceParams struct {
 	Endpoint string
-	Cache    repo.Cache[string, string]
+	Cache    repos.Cache[string, string]
 }
 
 func NewShortlinkSevice(params NewShortlinkServiceParams) ShortlinkService {
 	return &shortlinkService{
-		cache: params.Cache,
+		randomUtil: *utils.NewRand(),
+		cache:      params.Cache,
 	}
 }
 
 type shortlinkService struct {
-	cache repo.Cache[string, string]
-}
-
-func (s *shortlinkService) randomStr() string {
-	src := rand.NewSource(time.Now().UnixMicro())
-	randGen := rand.New(src)
-
-	builder := strings.Builder{}
-	for i := 0; i < 9; i++ {
-		offset := 0x41
-		if randGen.Int()%2 == 1 {
-			offset = 0x61
-		}
-
-		byte := offset + (randGen.Int() % 26)
-		builder.WriteRune(rune(byte))
-	}
-	return builder.String()
+	randomUtil utils.RandomUtil
+	cache      repos.Cache[string, string]
 }
 
 func (s *shortlinkService) CreateLink(in string) (string, error) {
-	str := s.randomStr()
+	str := s.randomUtil.RandomID(10, utils.CharsetAll)
 	s.cache.Set(str, in, 7*24*60*60)
 	return str, nil
 }

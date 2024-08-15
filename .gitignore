@@ -21,5 +21,14 @@
 go.work
 go.work.sum
 
+# Binary dir
+.build/
+
 # env file
 .env
+
+.run
+
+# temporary
+coworker/
+webapp/

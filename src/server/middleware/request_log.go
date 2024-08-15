@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"backend/logger"
+	"backend/src/logger"
 	"time"
 
 	"github.com/gin-gonic/gin"
