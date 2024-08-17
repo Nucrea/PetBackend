@@ -9,6 +9,7 @@ type Cache[K comparable, V any] interface {
 	Get(key K) (V, bool)
 	Set(key K, value V, ttlSeconds int)
 	Del(key K)
+	CheckExpired()
 }
 
 func NewCacheInmem[K comparable, V any](ttlSeconds int) Cache[K, V] {
@@ -73,4 +74,26 @@ func (c *cacheInmem[K, V]) Del(key K) {
 	defer c.m.Unlock()
 
 	delete(c.data, key)
+}
+
+func (c *cacheInmem[K, V]) CheckExpired() {
+	if len(c.data) == 0 {
+		return
+	}
+
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	itemsToProcess := 1000
+	for key, item := range c.data {
+		timestamp := time.Now().Unix()
+		if item.Expiration <= timestamp {
+			delete(c.data, key)
+		}
+
+		itemsToProcess--
+		if itemsToProcess <= 0 {
+			return
+		}
+	}
 }

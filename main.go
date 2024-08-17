@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx"
@@ -98,9 +99,23 @@ func main() {
 	jwtUtil := utils.NewJwtUtil(key)
 	passwordUtil := utils.NewPasswordUtil()
 	userRepo := repos.NewUserRepo(sqlDb)
-	userCache := repos.NewCacheInmem[string, models.UserDTO](60 * 60)
 	emailRepo := repos.NewEmailRepo()
 	actionTokenRepo := repos.NewActionTokenRepo(sqlDb)
+
+	userCache := repos.NewCacheInmem[string, models.UserDTO](60 * 60)
+	go func() {
+		tmr := time.NewTicker(30 * time.Second)
+		defer tmr.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tmr.C:
+				userCache.CheckExpired()
+			}
+		}
+	}()
 
 	clientNotifier := client_notifier.NewBasicNotifier()
 
