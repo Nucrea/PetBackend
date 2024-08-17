@@ -5,6 +5,7 @@ import (
 )
 
 type Args interface {
+	GetProfilePath() string
 	GetConfigPath() string
 	GetLogPath() string
 }
@@ -14,6 +15,7 @@ func Parse(osArgs []string) (Args, error) {
 
 	s := parser.String("c", "config", &argparse.Options{Required: true, Help: "Path to a config file"})
 	l := parser.String("o", "log", &argparse.Options{Required: false, Default: "", Help: "Path to a log file"})
+	p := parser.String("p", "profile", &argparse.Options{Required: false, Default: "", Help: "Path to a cpu profile file"})
 
 	err := parser.Parse(osArgs)
 	if err != nil {
@@ -21,14 +23,16 @@ func Parse(osArgs []string) (Args, error) {
 	}
 
 	return &args{
-		ConfigPath: *s,
-		LogPath:    *l,
+		ConfigPath:  *s,
+		LogPath:     *l,
+		ProfilePath: *p,
 	}, nil
 }
 
 type args struct {
-	ConfigPath string
-	LogPath    string
+	ProfilePath string
+	ConfigPath  string
+	LogPath     string
 }
 
 func (a *args) GetConfigPath() string {
@@ -37,4 +41,8 @@ func (a *args) GetConfigPath() string {
 
 func (a *args) GetLogPath() string {
 	return a.LogPath
+}
+
+func (a *args) GetProfilePath() string {
+	return a.ProfilePath
 }

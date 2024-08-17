@@ -8,9 +8,9 @@ import (
 )
 
 type createUserInput struct {
-	Email    string
-	Password string
-	Name     string
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
 }
 
 type createUserOutput struct {

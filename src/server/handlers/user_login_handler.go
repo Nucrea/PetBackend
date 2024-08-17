@@ -8,8 +8,8 @@ import (
 )
 
 type loginUserInput struct {
-	Login    string
-	Password string
+	Login    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type loginUserOutput struct {

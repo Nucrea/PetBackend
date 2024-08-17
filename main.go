@@ -11,12 +11,17 @@ import (
 	"backend/src/logger"
 	"backend/src/server/handlers"
 	"backend/src/server/middleware"
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"os"
+	"os/signal"
+	"runtime/pprof"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx"
@@ -40,6 +45,22 @@ func main() {
 	}
 
 	logger.Log().Msg("initializing service...")
+	defer logger.Log().Msg("service stopped")
+
+	signals := []os.Signal{
+		os.Kill,
+		os.Interrupt,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGKILL,
+		syscall.SIGSTOP,
+		syscall.SIGQUIT,
+		syscall.SIGABRT,
+		syscall.SIGHUP,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), signals...)
+	defer stop()
 
 	conf, err := config.NewFromFile(args.GetConfigPath())
 	if err != nil {
@@ -99,13 +120,15 @@ func main() {
 		},
 	)
 
-	if !debugMode {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	// if !debugMode {
+	gin.SetMode(gin.ReleaseMode)
+	// }
 
 	r := gin.New()
 	r.Use(middleware.NewRequestLogMiddleware(logger))
 	r.Use(gin.Recovery())
+
+	r.Static("/webapp", "./webapp")
 
 	linkGroup := r.Group("/s")
 	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(linkService))
@@ -116,17 +139,46 @@ func main() {
 	userGroup.POST("/login", handlers.NewUserLoginHandler(userService))
 
 	dummyGroup := r.Group("/dummy")
-	dummyGroup.Use(middleware.NewAuthMiddleware(userService))
-	dummyGroup.GET("/", handlers.NewDummyHandler())
+	{
+		dummyGroup.Use(middleware.NewAuthMiddleware(userService))
+		dummyGroup.GET("", handlers.NewDummyHandler())
+	}
 
 	lpGroup := r.Group("/pooling")
 	lpGroup.GET("/", handlers.NewLongPoolingHandler(clientNotifier))
 
+	if args.GetProfilePath() != "" {
+		pprofFile, err := os.Create(args.GetProfilePath())
+		if err != nil {
+			logger.Fatal().Err(err).Msg("can not create profile file")
+		}
+
+		if err := pprof.StartCPUProfile(pprofFile); err != nil {
+			logger.Fatal().Err(err).Msg("can not start cpu profiling")
+		}
+		defer func() {
+			logger.Log().Msg("stopping profiling...")
+			pprof.StopCPUProfile()
+			pprofFile.Close()
+		}()
+	}
+
 	listenAddr := fmt.Sprintf(":%d", conf.GetPort())
 	logger.Log().Msgf("server listening on %s", listenAddr)
 
-	err = r.Run(listenAddr)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", listenAddr)
 	if err != nil {
+		logger.Fatal().Err(err).Msg("can not create network listener")
+	}
+
+	go func() {
+		<-ctx.Done()
+		logger.Log().Msg("stopping service...")
+		listener.Close()
+	}()
+
+	err = r.RunListener(listener)
+	if err != nil && err == net.ErrClosed {
 		logger.Fatal().Err(err).Msg("server stopped with error")
 	}
 }
