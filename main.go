@@ -130,6 +130,8 @@ func main() {
 
 	r.Static("/webapp", "./webapp")
 
+	r.GET("/pooling", handlers.NewLongPoolingHandler(clientNotifier))
+
 	linkGroup := r.Group("/s")
 	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(linkService))
 	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(linkService))
@@ -143,9 +145,6 @@ func main() {
 		dummyGroup.Use(middleware.NewAuthMiddleware(userService))
 		dummyGroup.GET("", handlers.NewDummyHandler())
 	}
-
-	lpGroup := r.Group("/pooling")
-	lpGroup.GET("/", handlers.NewLongPoolingHandler(clientNotifier))
 
 	if args.GetProfilePath() != "" {
 		pprofFile, err := os.Create(args.GetProfilePath())
