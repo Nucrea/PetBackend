@@ -173,7 +173,7 @@ func main() {
 
 	go func() {
 		<-ctx.Done()
-		logger.Log().Msg("stopping service...")
+		logger.Log().Msg("stopping tcp listener...")
 		listener.Close()
 	}()
 
