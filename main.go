@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	debugMode := true
+	debugMode := false
 
 	args, err := args_parser.Parse(os.Args)
 	if err != nil {
