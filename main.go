@@ -9,22 +9,18 @@ import (
 	"backend/src/core/services"
 	"backend/src/core/utils"
 	"backend/src/logger"
-	"backend/src/server/handlers"
-	"backend/src/server/middleware"
+	"backend/src/server"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
 	"encoding/pem"
-	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/stdlib"
 )
@@ -135,32 +131,6 @@ func main() {
 		},
 	)
 
-	// if !debugMode {
-	gin.SetMode(gin.ReleaseMode)
-	// }
-
-	r := gin.New()
-	r.Use(middleware.NewRequestLogMiddleware(logger))
-	r.Use(gin.Recovery())
-
-	r.Static("/webapp", "./webapp")
-
-	r.GET("/pooling", handlers.NewLongPoolingHandler(clientNotifier))
-
-	linkGroup := r.Group("/s")
-	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(linkService))
-	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(linkService))
-
-	userGroup := r.Group("/user")
-	userGroup.POST("/create", handlers.NewUserCreateHandler(userService))
-	userGroup.POST("/login", handlers.NewUserLoginHandler(userService))
-
-	dummyGroup := r.Group("/dummy")
-	{
-		dummyGroup.Use(middleware.NewAuthMiddleware(userService))
-		dummyGroup.GET("", handlers.NewDummyHandler())
-	}
-
 	if args.GetProfilePath() != "" {
 		pprofFile, err := os.Create(args.GetProfilePath())
 		if err != nil {
@@ -177,22 +147,14 @@ func main() {
 		}()
 	}
 
-	listenAddr := fmt.Sprintf(":%d", conf.GetPort())
-	logger.Log().Msgf("server listening on %s", listenAddr)
-
-	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", listenAddr)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("can not create network listener")
-	}
-
-	go func() {
-		<-ctx.Done()
-		logger.Log().Msg("stopping tcp listener...")
-		listener.Close()
-	}()
-
-	err = r.RunListener(listener)
-	if err != nil && err == net.ErrClosed {
-		logger.Fatal().Err(err).Msg("server stopped with error")
-	}
+	srv := server.New(
+		server.NewServerOpts{
+			DebugMode:        debugMode,
+			Logger:           logger,
+			Notifier:         clientNotifier,
+			ShortlinkService: linkService,
+			UserService:      userService,
+		},
+	)
+	srv.Run(ctx, conf.GetPort())
 }
