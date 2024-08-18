@@ -1,8 +1,12 @@
 package logger
 
 import (
+	"bufio"
+	"context"
 	"io"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -38,9 +42,24 @@ func New(opts NewLoggerOpts) (Logger, error) {
 		level = zerolog.DebugLevel
 	}
 
-	writer := io.MultiWriter(writers...)
+	writer := bufio.NewWriterSize(io.MultiWriter(writers...), 32*1024)
+	wrapper := &BufioWrapper{writer, &sync.RWMutex{}}
+	go func() {
+		tmr := time.NewTicker(500 * time.Millisecond)
+		defer tmr.Stop()
 
-	l := zerolog.New(writer).Level(level).With().Timestamp().Logger()
+		for {
+			wrapper.Flush()
+
+			select {
+			case <-context.Background().Done():
+				return
+			case <-tmr.C:
+			}
+		}
+	}()
+
+	l := zerolog.New(wrapper).Level(level).With().Timestamp().Logger()
 	return &logger{
 		zeroLogger: &l,
 	}, nil
