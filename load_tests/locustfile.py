@@ -1,8 +1,8 @@
 import random
 import string
-from locust import HttpUser, task
+from locust import FastHttpUser, task
 
-class DummyRoute(HttpUser):
+class DummyRoute(FastHttpUser):
     @task
     def dummy_test(self):
         self.client.get("/dummy")
