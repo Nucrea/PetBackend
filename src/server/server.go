@@ -33,7 +33,7 @@ func New(opts NewServerOpts) *Server {
 
 	r := gin.New()
 	r.Use(middleware.NewRequestLogMiddleware(opts.Logger))
-	r.Use(gin.Recovery())
+	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, opts.DebugMode))
 
 	r.Static("/webapp", "./webapp")
 
