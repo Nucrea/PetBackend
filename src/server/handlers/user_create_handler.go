@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"backend/src/core/services"
+	"backend/src/logger"
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
@@ -19,38 +20,54 @@ type createUserOutput struct {
 	Name  string `json:"name"`
 }
 
-func NewUserCreateHandler(userService services.UserService) gin.HandlerFunc {
-	return func(ctx *gin.Context) {
+func NewUserCreateHandler(logger logger.Logger, userService services.UserService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctxLogger := logger.WithContext(c)
+
 		params := createUserInput{}
-		if err := ctx.ShouldBindJSON(&params); err != nil {
-			ctx.AbortWithError(400, err)
+		if err := c.ShouldBindJSON(&params); err != nil {
+			ctxLogger.Error().Err(err).Msg("bad input body model")
+			c.Data(400, "plain/text", []byte(err.Error()))
 			return
 		}
 
-		dto, err := userService.CreateUser(ctx, services.UserCreateParams{
-			Email:    params.Email,
-			Password: params.Password,
-			Name:     params.Name,
-		})
-		if err == services.ErrUserExists || err == services.ErrUserBadPassword {
-			ctx.Data(400, "plain/text", []byte(err.Error()))
+		dto, err := userService.CreateUser(
+			c,
+			services.UserCreateParams{
+				Email:    params.Email,
+				Password: params.Password,
+				Name:     params.Name,
+			},
+		)
+		if err == services.ErrUserExists {
+			ctxLogger.Error().Err(err).Msg("user already exists")
+			c.Data(400, "plain/text", []byte(err.Error()))
+			return
+		}
+		if err == services.ErrUserBadPassword {
+			ctxLogger.Error().Err(err).Msg("password does not satisfy requirements")
+			c.Data(400, "plain/text", []byte(err.Error()))
 			return
 		}
 		if err != nil {
-			ctx.Data(500, "plain/text", []byte(err.Error()))
+			ctxLogger.Error().Err(err).Msg("create user error")
+			c.Data(500, "plain/text", []byte(err.Error()))
 			return
 		}
 
-		resultBody, err := json.Marshal(createUserOutput{
-			Id:    dto.Id,
-			Email: dto.Email,
-			Name:  dto.Name,
-		})
+		resultBody, err := json.Marshal(
+			createUserOutput{
+				Id:    dto.Id,
+				Email: dto.Email,
+				Name:  dto.Name,
+			},
+		)
 		if err != nil {
-			ctx.AbortWithError(500, err)
+			ctxLogger.Error().Err(err).Msg("marshal user model error")
+			c.Data(500, "plain/text", []byte(err.Error()))
 			return
 		}
 
-		ctx.Data(200, "application/json", resultBody)
+		c.Data(200, "application/json", resultBody)
 	}
 }

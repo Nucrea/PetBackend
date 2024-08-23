@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"backend/src/core/services"
+	"backend/src/logger"
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
@@ -16,21 +17,31 @@ type loginUserOutput struct {
 	Token string `json:"token"`
 }
 
-func NewUserLoginHandler(userService services.UserService) gin.HandlerFunc {
-	return func(ctx *gin.Context) {
+func NewUserLoginHandler(logger logger.Logger, userService services.UserService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctxLogger := logger.WithContext(c).WithPrefix("NewUserLoginHandler")
+
 		params := loginUserInput{}
-		if err := ctx.ShouldBindJSON(&params); err != nil {
-			ctx.AbortWithError(400, err)
+		if err := c.ShouldBindJSON(&params); err != nil {
+			ctxLogger.Error().Err(err).Msg("bad input body model")
+			c.AbortWithError(400, err)
 			return
 		}
 
-		token, err := userService.AuthenticateUser(ctx, params.Login, params.Password)
-		if err == services.ErrUserNotExists || err == services.ErrUserWrongPassword {
-			ctx.AbortWithError(400, err)
+		token, err := userService.AuthenticateUser(c, params.Login, params.Password)
+		if err == services.ErrUserNotExists {
+			ctxLogger.Error().Err(err).Msg("user does not exist")
+			c.AbortWithError(400, err)
+			return
+		}
+		if err == services.ErrUserWrongPassword {
+			ctxLogger.Error().Err(err).Msg("wrong password")
+			c.AbortWithError(400, err)
 			return
 		}
 		if err != nil {
-			ctx.AbortWithError(500, err)
+			ctxLogger.Error().Err(err).Msg("AuthenticateUser internal error")
+			c.AbortWithError(500, err)
 			return
 		}
 
@@ -38,10 +49,11 @@ func NewUserLoginHandler(userService services.UserService) gin.HandlerFunc {
 			Token: token,
 		})
 		if err != nil {
-			ctx.AbortWithError(500, err)
+			ctxLogger.Error().Err(err).Msg("marshal json internal error")
+			c.AbortWithError(500, err)
 			return
 		}
 
-		ctx.Data(200, "application/json", resultBody)
+		c.Data(200, "application/json", resultBody)
 	}
 }

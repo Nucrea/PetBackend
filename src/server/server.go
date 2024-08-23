@@ -32,20 +32,21 @@ func New(opts NewServerOpts) *Server {
 	}
 
 	r := gin.New()
+	r.Static("/webapp", "./webapp")
+	r.GET("/health", handlers.NewDummyHandler())
+
 	r.Use(middleware.NewRequestLogMiddleware(opts.Logger))
 	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, opts.DebugMode))
 
-	r.Static("/webapp", "./webapp")
-
-	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Notifier))
+	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Logger, opts.Notifier))
 
 	linkGroup := r.Group("/s")
 	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(opts.ShortlinkService))
 	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(opts.ShortlinkService))
 
 	userGroup := r.Group("/user")
-	userGroup.POST("/create", handlers.NewUserCreateHandler(opts.UserService))
-	userGroup.POST("/login", handlers.NewUserLoginHandler(opts.UserService))
+	userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
+	userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
 
 	dummyGroup := r.Group("/dummy")
 	{

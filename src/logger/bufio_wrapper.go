@@ -5,21 +5,25 @@ import (
 	"sync"
 )
 
-type BufioWrapper struct {
+type bufioWrapper struct {
 	*bufio.Writer
 	m *sync.RWMutex
 }
 
-func (b *BufioWrapper) Write(p []byte) (nn int, err error) {
+func (b *bufioWrapper) Write(p []byte) (nn int, err error) {
 	b.m.RLock()
 	defer b.m.RUnlock()
 
 	return b.Writer.Write(p)
 }
 
-func (b *BufioWrapper) Flush() error {
+func (b *bufioWrapper) Flush() error {
 	b.m.Lock()
 	defer b.m.Unlock()
 
 	return b.Writer.Flush()
+}
+
+func (b *bufioWrapper) Close() error {
+	return b.Flush()
 }

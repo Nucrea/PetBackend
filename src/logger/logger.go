@@ -1,11 +1,13 @@
 package logger
 
 import (
-	"backend/src/request_context"
 	"context"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
+
+const RequestIdKey = "logger_request_id"
 
 type Logger interface {
 	Log() Event
@@ -14,11 +16,14 @@ type Logger interface {
 	Fatal() Event
 
 	Printf(format string, v ...any)
+
+	WithContext(ctx context.Context) Logger
+	WithPrefix(prefix string) Logger
 }
 
 type logger struct {
 	prefix     string
-	requestCtx request_context.RequestContext
+	requestId  string
 	zeroLogger *zerolog.Logger
 }
 
@@ -45,33 +50,38 @@ func (l logger) Printf(format string, v ...any) {
 func (l logger) wrapEvent(zerologEvent *zerolog.Event) Event {
 	var e Event = event{zerologEvent}
 
-	if l.requestCtx != nil {
-		e = e.Str("requestId", l.requestCtx.RequestId())
-		e = e.Str("userId", l.requestCtx.UserId())
-		if l.prefix != "" {
-			e = e.Str("prefix", l.prefix)
-		}
+	if l.requestId != "" {
+		e = e.Str("requestId", l.requestId)
+	}
+	if l.prefix != "" {
+		e = e.Str("prefix", l.prefix)
 	}
 
 	return e
 }
 
 func (l logger) WithContext(ctx context.Context) Logger {
-	if rctx, ok := ctx.(request_context.RequestContext); ok {
-		return logger{
-			prefix:     l.prefix,
-			requestCtx: rctx,
-			zeroLogger: l.zeroLogger,
-		}
+	requestIdVal := ctx.Value(RequestIdKey)
+	requestId, ok := requestIdVal.(string)
+	if !ok || requestId == "" {
+		return l
 	}
 
-	return l
+	return logger{
+		prefix:     l.prefix,
+		requestId:  requestId,
+		zeroLogger: l.zeroLogger,
+	}
 }
 
 func (l logger) WithPrefix(prefix string) Logger {
 	return logger{
 		prefix:     prefix,
-		requestCtx: l.requestCtx,
+		requestId:  l.requestId,
 		zeroLogger: l.zeroLogger,
 	}
+}
+
+func SetCtxRequestId(ginCtx *gin.Context, requestId string) {
+	ginCtx.Set(RequestIdKey, requestId)
 }

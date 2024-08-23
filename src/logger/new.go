@@ -42,8 +42,8 @@ func New(opts NewLoggerOpts) (Logger, error) {
 		level = zerolog.DebugLevel
 	}
 
-	writer := bufio.NewWriterSize(io.MultiWriter(writers...), 32*1024)
-	wrapper := &BufioWrapper{writer, &sync.RWMutex{}}
+	writer := bufio.NewWriterSize(io.MultiWriter(writers...), 8*1024)
+	wrapper := &bufioWrapper{writer, &sync.RWMutex{}}
 	go func() {
 		tmr := time.NewTicker(500 * time.Millisecond)
 		defer tmr.Stop()
@@ -53,6 +53,7 @@ func New(opts NewLoggerOpts) (Logger, error) {
 
 			select {
 			case <-context.Background().Done():
+				wrapper.Flush()
 				return
 			case <-tmr.C:
 			}

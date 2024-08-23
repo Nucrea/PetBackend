@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"backend/src/client_notifier"
+	"backend/src/logger"
 	"backend/src/server/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewLongPoolingHandler(notifier client_notifier.ClientNotifier) gin.HandlerFunc {
+func NewLongPoolingHandler(logger logger.Logger, notifier client_notifier.ClientNotifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := utils.GetUserFromRequest(c)
 		if user == nil {
