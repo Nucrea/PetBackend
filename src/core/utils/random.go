@@ -16,54 +16,53 @@ const (
 	CharsetNumeric
 )
 
-type charsetPart struct {
+type charsetBlock struct {
 	Offset int
 	Size   int
 }
 
-var charsets = map[Charset][]charsetPart{}
-
 func NewRand() *RandomUtil {
-	charsetLettersLower := charsetPart{ //CharsetLettersLower
+	charsetLettersLower := charsetBlock{
 		Offset: 0x41,
 		Size:   26,
 	}
 
-	charsetLettersUpper := charsetPart{ //CharsetLettersUpper
+	charsetLettersUpper := charsetBlock{
 		Offset: 0x61,
 		Size:   26,
 	}
 
-	charsetNumeric := charsetPart{ //CharsetLettersNumeric
+	charsetNumeric := charsetBlock{
 		Offset: 0x30,
 		Size:   10,
 	}
 
-	charsets = map[Charset][]charsetPart{
-		CharsetNumeric:      {charsetNumeric},
-		CharsetLettersLower: {charsetLettersLower},
-		CharsetLettersUpper: {charsetLettersUpper},
-		CharsetLetters:      {charsetLettersLower, charsetLettersUpper},
-		CharsetAll:          {charsetLettersLower, charsetLettersUpper, charsetNumeric},
+	return &RandomUtil{
+		charsets: map[Charset][]charsetBlock{
+			CharsetNumeric:      {charsetNumeric},
+			CharsetLettersLower: {charsetLettersLower},
+			CharsetLettersUpper: {charsetLettersUpper},
+			CharsetLetters:      {charsetLettersLower, charsetLettersUpper},
+			CharsetAll:          {charsetLettersLower, charsetLettersUpper, charsetNumeric},
+		},
 	}
-
-	return &RandomUtil{}
 }
 
-type RandomUtil struct{}
+type RandomUtil struct {
+	charsets map[Charset][]charsetBlock
+}
 
 func (r *RandomUtil) RandomID(outputLenght int, charset Charset) string {
 	src := rand.NewSource(time.Now().UnixMicro())
 	randGen := rand.New(src)
 
-	charsetData := charsets[charset]
+	charsetBlocks := r.charsets[charset]
 
 	builder := strings.Builder{}
 	for i := 0; i < outputLenght; i++ {
-		charsetIdx := randGen.Int() % len(charsetData)
-		charsetPart := charsetData[charsetIdx]
+		charsetBlock := charsetBlocks[randGen.Int()%len(charsetBlocks)]
 
-		byte := charsetPart.Offset + (randGen.Int() % charsetPart.Size)
+		byte := charsetBlock.Offset + (randGen.Int() % charsetBlock.Size)
 		builder.WriteRune(rune(byte))
 	}
 	return builder.String()

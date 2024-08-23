@@ -1,5 +1,7 @@
 package middleware
 
+// Modified recovery from gin, use own logger
+
 import (
 	"backend/src/logger"
 	"bytes"
