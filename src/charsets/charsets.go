@@ -120,6 +120,7 @@ func (c charsetUnion) RandomRune(r RandInt) rune {
 }
 
 func (c charsetUnion) RandomString(r RandInt, size int) string {
+	// TODO: improve distribution
 	builder := strings.Builder{}
 	for i := 0; i < size; i++ {
 		index := r.Int() % (len(c.charsets) - 1)

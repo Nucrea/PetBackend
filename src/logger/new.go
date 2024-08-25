@@ -26,6 +26,7 @@ type NewLoggerOpts struct {
 }
 
 func New(opts NewLoggerOpts) (Logger, error) {
+	// TODO: pass output streams from opts
 	writers := []io.Writer{}
 	writers = append(writers, os.Stderr)
 
@@ -37,14 +38,19 @@ func New(opts NewLoggerOpts) (Logger, error) {
 		writers = append(writers, file)
 	}
 
+	// TODO: more log levels
 	level := zerolog.TraceLevel
 	if opts.Debug {
 		level = zerolog.DebugLevel
 	}
 
+	// TODO: move to wrapper, determine optimal buffer size
 	writer := bufio.NewWriterSize(io.MultiWriter(writers...), 8*1024)
 	wrapper := &bufioWrapper{writer, &sync.RWMutex{}}
+
+	// Periodically flush buffer
 	go func() {
+		// TODO: add cooldown if flush was triggered by overfow
 		tmr := time.NewTicker(500 * time.Millisecond)
 		defer tmr.Stop()
 

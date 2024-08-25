@@ -39,7 +39,7 @@ func (a *App) Run(p RunParams) {
 		ctx       = p.Ctx
 		osArgs    = p.OsArgs
 		_         = p.EnvVars
-		debugMode = false // TODO: replace to flag from conf
+		debugMode = false // TODO: replace with flag from conf
 	)
 
 	//-----------------------------------------

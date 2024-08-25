@@ -11,6 +11,7 @@ type bufioWrapper struct {
 }
 
 func (b *bufioWrapper) Write(p []byte) (nn int, err error) {
+	// TODO: try replace mutex, improve logging perfomance
 	b.m.RLock()
 	defer b.m.RUnlock()
 
