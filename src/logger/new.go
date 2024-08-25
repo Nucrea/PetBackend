@@ -1,12 +1,9 @@
 package logger
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -25,7 +22,7 @@ type NewLoggerOpts struct {
 	// OutputStream OutputStream
 }
 
-func New(opts NewLoggerOpts) (Logger, error) {
+func New(ctx context.Context, opts NewLoggerOpts) (Logger, error) {
 	// TODO: pass output streams from opts
 	writers := []io.Writer{}
 	writers = append(writers, os.Stderr)
@@ -45,26 +42,9 @@ func New(opts NewLoggerOpts) (Logger, error) {
 	}
 
 	// TODO: move to wrapper, determine optimal buffer size
-	writer := bufio.NewWriterSize(io.MultiWriter(writers...), 8*1024)
-	wrapper := &bufioWrapper{writer, &sync.RWMutex{}}
-
-	// Periodically flush buffer
-	go func() {
-		// TODO: add cooldown if flush was triggered by overfow
-		tmr := time.NewTicker(500 * time.Millisecond)
-		defer tmr.Stop()
-
-		for {
-			wrapper.Flush()
-
-			select {
-			case <-context.Background().Done():
-				wrapper.Flush()
-				return
-			case <-tmr.C:
-			}
-		}
-	}()
+	writer := io.MultiWriter(writers...)
+	wrapper := newWrapper(writer)
+	wrapper.FlushRoutine(ctx)
 
 	l := zerolog.New(wrapper).Level(level).With().Timestamp().Logger()
 	return &logger{
