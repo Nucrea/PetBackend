@@ -25,7 +25,7 @@ func GetCharset(charsetType CharsetType) Charset {
 	case CharsetTypeLettersLower:
 		return charsetLettersLower
 	case CharsetTypeLettersUpper:
-		return charsetLettersLower
+		return charsetLettersUpper
 	case CharsetTypeLetters:
 		return charsetLetters
 	case CharsetTypeAll:

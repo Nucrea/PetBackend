@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"backend/src/integrations"
 	log "backend/src/logger"
 	"time"
 
@@ -8,8 +9,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewRequestLogMiddleware(logger log.Logger) gin.HandlerFunc {
+func NewRequestLogMiddleware(logger log.Logger, prometheus *integrations.Prometheus) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		prometheus.RequestInc()
+		defer prometheus.RequestDec()
+
 		requestId := c.GetHeader("X-Request-Id")
 		if requestId == "" {
 			requestId = uuid.New().String()
@@ -25,6 +29,8 @@ func NewRequestLogMiddleware(logger log.Logger) gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		latency := time.Since(start)
+
+		prometheus.AddRequestTime(float64(latency))
 
 		method := c.Request.Method
 		statusCode := c.Writer.Status()

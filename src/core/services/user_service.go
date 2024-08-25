@@ -58,7 +58,7 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	}
 
 	if err := u.deps.Password.Validate(params.Password); err != nil {
-		return nil, ErrUserBadPassword
+		return nil, err
 	}
 
 	secret, err := u.deps.Password.Hash(params.Password)

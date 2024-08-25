@@ -3,6 +3,7 @@ package server
 import (
 	"backend/src/client_notifier"
 	"backend/src/core/services"
+	"backend/src/integrations"
 	"backend/src/logger"
 	"backend/src/server/handlers"
 	"backend/src/server/middleware"
@@ -35,8 +36,11 @@ func New(opts NewServerOpts) *Server {
 	r.Static("/webapp", "./webapp")
 	r.GET("/health", handlers.NewDummyHandler())
 
-	r.Use(middleware.NewRequestLogMiddleware(opts.Logger))
-	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, opts.DebugMode))
+	prometheus := integrations.NewPrometheus()
+	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
+
+	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, prometheus))
+	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
 
 	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Logger, opts.Notifier))
 

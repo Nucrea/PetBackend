@@ -26,5 +26,8 @@ func (b *bufioWrapper) Flush() error {
 }
 
 func (b *bufioWrapper) Close() error {
-	return b.Flush()
+	b.m.Lock()
+	defer b.m.Unlock()
+
+	return b.Writer.Flush()
 }
