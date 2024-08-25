@@ -8,12 +8,12 @@ import (
 	"backend/src/core/repos"
 	"backend/src/core/services"
 	"backend/src/core/utils"
+	"backend/src/integrations"
 	"backend/src/logger"
 	"backend/src/server"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
-	"database/sql"
 	"encoding/pem"
 	"log"
 	"os"
@@ -21,9 +21,6 @@ import (
 	"runtime/pprof"
 	"syscall"
 	"time"
-
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/stdlib"
 )
 
 type App struct{}
@@ -42,31 +39,6 @@ func (a *App) Run(p RunParams) {
 		debugMode = false // TODO: replace with flag from conf
 	)
 
-	//-----------------------------------------
-
-	args, err := args_parser.Parse(osArgs)
-	if err != nil {
-		log.Fatalf("failed to parse os args: %v\n", err)
-	}
-
-	logger, err := logger.New(logger.NewLoggerOpts{
-		Debug:      debugMode,
-		OutputFile: args.GetLogPath(),
-	})
-	if err != nil {
-		log.Fatalf("failed to create logger object: %v\n", err)
-	}
-
-	conf, err := config.NewFromFile(args.GetConfigPath())
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to parse config file")
-	}
-
-	//-----------------------------------------
-
-	logger.Log().Msg("initializing service...")
-	defer logger.Log().Msg("service stopped")
-
 	signals := []os.Signal{
 		os.Kill,
 		os.Interrupt,
@@ -82,18 +54,37 @@ func (a *App) Run(p RunParams) {
 	ctx, stop := signal.NotifyContext(ctx, signals...)
 	defer stop()
 
-	var sqlDb *sql.DB // TODO: move to integrations package
-	{
-		pgConnStr := conf.GetPostgresUrl()
-		connConf, err := pgx.ParseConnectionString(pgConnStr)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed parsing postgres connection string")
-		}
+	//-----------------------------------------
 
-		sqlDb = stdlib.OpenDB(connConf)
-		if err := sqlDb.Ping(); err != nil {
-			logger.Fatal().Err(err).Msg("failed pinging postgres db")
-		}
+	args, err := args_parser.Parse(osArgs)
+	if err != nil {
+		log.Fatalf("failed to parse os args: %v\n", err)
+	}
+
+	logger, err := logger.New(
+		ctx,
+		logger.NewLoggerOpts{
+			Debug:      debugMode,
+			OutputFile: args.GetLogPath(),
+		},
+	)
+	if err != nil {
+		log.Fatalf("failed to create logger object: %v\n", err)
+	}
+
+	conf, err := config.NewFromFile(args.GetConfigPath())
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to parse config file")
+	}
+
+	//-----------------------------------------
+
+	logger.Log().Msg("initializing service...")
+	defer logger.Log().Msg("service stopped")
+
+	sqlDb, err := integrations.NewPostgresConn(ctx, conf.GetPostgresUrl())
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed connecting to postgres")
 	}
 
 	var key *rsa.PrivateKey
