@@ -12,8 +12,8 @@ const (
 
 var (
 	charsetNumeric      = NewCharsetFromASCII(0x30, 10)
-	charsetLettersLower = NewCharsetFromASCII(0x41, 26)
-	charsetLettersUpper = NewCharsetFromASCII(0x61, 26)
+	charsetLettersLower = NewCharsetFromASCII(0x61, 26)
+	charsetLettersUpper = NewCharsetFromASCII(0x41, 26)
 	charsetLetters      = NewCharsetUnion(charsetLettersLower, charsetLettersUpper)
 	charsetAll          = NewCharsetUnion(charsetNumeric, charsetLettersLower, charsetLettersUpper)
 )
