@@ -39,8 +39,8 @@ func New(opts NewServerOpts) *Server {
 	prometheus := integrations.NewPrometheus()
 	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
 
-	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, prometheus))
 	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
+	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, prometheus))
 
 	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Logger, opts.Notifier))
 
@@ -65,7 +65,7 @@ func New(opts NewServerOpts) *Server {
 }
 
 func (s *Server) Run(ctx context.Context, port uint16) {
-	listenAddr := fmt.Sprintf(":%d", port)
+	listenAddr := fmt.Sprintf("0.0.0.0:%d", port)
 	s.logger.Log().Msgf("server listening on %s", listenAddr)
 
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", listenAddr)

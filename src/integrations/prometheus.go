@@ -10,7 +10,7 @@ import (
 
 type Prometheus struct {
 	reg            *prometheus.Registry
-	rpsGauge       prometheus.Gauge
+	rpsCounter     prometheus.Counter
 	avgReqTimeHist prometheus.Histogram
 	panicsHist     prometheus.Histogram
 }
@@ -30,8 +30,8 @@ func NewPrometheus() *Prometheus {
 	// 		Help: "Summary errors count",
 	// 	},
 	// )
-	rpsGauge := prometheus.NewGauge(
-		prometheus.GaugeOpts{
+	rpsCounter := prometheus.NewCounter(
+		prometheus.CounterOpts{
 			Name: "backend_requests_per_second",
 			Help: "Requests per second metric",
 		},
@@ -48,12 +48,12 @@ func NewPrometheus() *Prometheus {
 			Help: "Panics histogram metric",
 		},
 	)
-	reg.MustRegister(rpsGauge, avgReqTimeHist, panicsHist)
+	reg.MustRegister(rpsCounter, avgReqTimeHist, panicsHist)
 
 	return &Prometheus{
 		panicsHist:     panicsHist,
 		avgReqTimeHist: avgReqTimeHist,
-		rpsGauge:       rpsGauge,
+		rpsCounter:     rpsCounter,
 		reg:            reg,
 	}
 }
@@ -63,11 +63,11 @@ func (p *Prometheus) GetRequestHandler() http.Handler {
 }
 
 func (p *Prometheus) RequestInc() {
-	p.rpsGauge.Inc()
+	p.rpsCounter.Inc()
 }
 
 func (p *Prometheus) RequestDec() {
-	p.rpsGauge.Dec()
+	// p.rpsGauge.Dec()
 }
 
 func (p *Prometheus) AddRequestTime(reqTime float64) {

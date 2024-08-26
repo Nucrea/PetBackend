@@ -30,7 +30,7 @@ func NewRequestLogMiddleware(logger log.Logger, prometheus *integrations.Prometh
 		c.Next()
 		latency := time.Since(start)
 
-		prometheus.AddRequestTime(float64(latency))
+		prometheus.AddRequestTime(float64(latency.Microseconds()))
 
 		method := c.Request.Method
 		statusCode := c.Writer.Status()

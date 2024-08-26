@@ -1,14 +1,56 @@
 services:
   postgres:
-    image: postgres
+    image: postgres:16.4
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-volume:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+
+  grafana:
+    image: grafana/grafana:11.1.4
     ports:
-      - 5432:5432
+      - 3000:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - postgres-volume:/var/lib/postgresql
+      - grafana-volume:/var/lib/grafana
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    user: root
+    ports:
+      - 9090:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - prometheus-volume:/etc/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    command:
+      - '--path.rootfs=/host'
+    ports:
+      - 9100:9100
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    pid: host
+    volumes:
+      - '/:/host:ro,rslave'
+
+  # backend:
+  #   build: .
+  #     # dockerfile: ./dockerfile
+  #   volumes:
+  #     - ./:/app
+  #   ports:
+  #     - 8080:8080
 
 volumes:
   postgres-volume:
+  grafana-volume:
+  prometheus-volume:
