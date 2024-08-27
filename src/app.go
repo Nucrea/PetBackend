@@ -114,8 +114,21 @@ func (a *App) Run(p RunParams) {
 			userRepo        = repos.NewUserRepo(sqlDb)
 			emailRepo       = repos.NewEmailRepo()
 			actionTokenRepo = repos.NewActionTokenRepo(sqlDb)
-			linksCache      = repos.NewCacheInmem[string, string](7 * 24 * 60 * 60)
-			userCache       = repos.NewCacheInmem[string, models.UserDTO](60 * 60)
+			jwtCache        = repos.NewCacheInmemSharded[string, string](60, 36, func(key string) int {
+				char := int(key[len(key)-1])
+				if char >= 0x30 && char <= 0x39 {
+					return char - 0x30
+				}
+				if char >= 0x41 && char <= 0x5A {
+					return char - 0x41
+				}
+				return char - 0x61
+			}) //repos.NewCacheInmem[string, string](60)
+			linksCache = repos.NewCacheInmem[string, string](7 * 24 * 60 * 60)
+			userCache  = repos.NewCacheInmemSharded[string, models.UserDTO](60*60, 10, func(key string) int {
+				char := int(key[len(key)-1])
+				return char - 0x30
+			}) //repos.NewCacheInmem[string, models.UserDTO](60 * 60)
 		)
 
 		// Periodically trigger cache cleanup
@@ -128,6 +141,7 @@ func (a *App) Run(p RunParams) {
 				case <-ctx.Done():
 					return
 				case <-tmr.C:
+					jwtCache.CheckExpired()
 					userCache.CheckExpired()
 					linksCache.CheckExpired()
 				}
@@ -140,6 +154,7 @@ func (a *App) Run(p RunParams) {
 				Password:        passwordUtil,
 				UserRepo:        userRepo,
 				UserCache:       userCache,
+				JwtCache:        jwtCache,
 				EmailRepo:       emailRepo,
 				ActionTokenRepo: actionTokenRepo,
 			},

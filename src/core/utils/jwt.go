@@ -11,14 +11,14 @@ type JwtPayload struct {
 	UserId string `json:"userId"`
 }
 
-type jwtClaims struct {
+type JwtClaims struct {
 	jwt.RegisteredClaims
 	JwtPayload
 }
 
 type JwtUtil interface {
 	Create(payload JwtPayload) (string, error)
-	Parse(tokenStr string) (JwtPayload, error)
+	Parse(tokenStr string) (JwtClaims, error)
 }
 
 func NewJwtUtil(privateKey *rsa.PrivateKey) JwtUtil {
@@ -32,7 +32,7 @@ type jwtUtil struct {
 }
 
 func (j *jwtUtil) Create(payload JwtPayload) (string, error) {
-	claims := &jwtClaims{JwtPayload: payload}
+	claims := &JwtClaims{JwtPayload: payload}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	tokenStr, err := token.SignedString(j.privateKey)
 	if err != nil {
@@ -41,17 +41,17 @@ func (j *jwtUtil) Create(payload JwtPayload) (string, error) {
 	return tokenStr, nil
 }
 
-func (j *jwtUtil) Parse(tokenStr string) (JwtPayload, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &jwtClaims{}, func(t *jwt.Token) (interface{}, error) {
+func (j *jwtUtil) Parse(tokenStr string) (JwtClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &JwtClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return &j.privateKey.PublicKey, nil
 	})
 	if err != nil {
-		return JwtPayload{}, err
+		return JwtClaims{}, err
 	}
 
-	if claims, ok := token.Claims.(*jwtClaims); ok {
-		return claims.JwtPayload, nil
+	if claims, ok := token.Claims.(*JwtClaims); ok {
+		return *claims, nil
 	}
 
-	return JwtPayload{}, fmt.Errorf("cant get payload")
+	return JwtClaims{}, fmt.Errorf("cant get payload")
 }

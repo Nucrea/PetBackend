@@ -25,7 +25,7 @@ type passwordUtil struct {
 }
 
 func (b *passwordUtil) Hash(password string) (string, error) {
-	bytes, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	bytes, _ := bcrypt.GenerateFromPassword([]byte(password), 8) //bcrypt.DefaultCost)
 	return string(bytes), nil
 }
 

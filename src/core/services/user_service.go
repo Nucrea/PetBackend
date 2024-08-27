@@ -34,6 +34,7 @@ type UserServiceDeps struct {
 	Password        utils.PasswordUtil
 	UserRepo        repos.UserRepo
 	UserCache       repos.Cache[string, models.UserDTO]
+	JwtCache        repos.Cache[string, string]
 	EmailRepo       repos.EmailRepo
 	ActionTokenRepo repos.ActionTokenRepo
 }
@@ -195,6 +196,10 @@ func (u *userService) getUserById(ctx context.Context, userId string) (*models.U
 }
 
 func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error) {
+	if userId, ok := u.deps.JwtCache.Get(tokenStr); ok {
+		return u.getUserById(ctx, userId)
+	}
+
 	payload, err := u.deps.Jwt.Parse(tokenStr)
 	if err != nil {
 		return nil, ErrUserWrongToken
@@ -204,6 +209,8 @@ func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*mode
 	if err != nil {
 		return nil, err
 	}
+
+	u.deps.JwtCache.Set(tokenStr, payload.UserId, -1)
 
 	return user, nil
 }

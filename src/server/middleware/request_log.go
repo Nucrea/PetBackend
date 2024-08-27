@@ -34,12 +34,20 @@ func NewRequestLogMiddleware(logger log.Logger, prometheus *integrations.Prometh
 
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
-		clientIP := c.ClientIP()
+
+		if statusCode >= 200 && statusCode < 400 {
+			return
+		}
 
 		ctxLogger := logger.WithContext(c)
 
-		e := ctxLogger.Log()
-		e.Str("ip", clientIP)
-		e.Msgf("Request %s %s %d %v", method, path, statusCode, latency)
+		if statusCode >= 400 && statusCode < 500 {
+			prometheus.Add4xxError()
+			ctxLogger.Warning().Msgf("Request %s %s %d %v", method, path, statusCode, latency)
+			return
+		}
+
+		prometheus.Add5xxError()
+		ctxLogger.Error().Msgf("Request %s %s %d %v", method, path, statusCode, latency)
 	}
 }
