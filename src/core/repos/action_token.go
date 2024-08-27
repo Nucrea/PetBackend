@@ -2,8 +2,8 @@ package repos
 
 import (
 	"backend/src/core/models"
+	"backend/src/integrations"
 	"context"
-	"database/sql"
 )
 
 type ActionTokenRepo interface {
@@ -11,14 +11,14 @@ type ActionTokenRepo interface {
 	PopActionToken(ctx context.Context, userId, value string, target models.ActionTokenTarget) (*models.ActionTokenDTO, error)
 }
 
-func NewActionTokenRepo(db *sql.DB) ActionTokenRepo {
+func NewActionTokenRepo(db integrations.SqlDB) ActionTokenRepo {
 	return &actionTokenRepo{
 		db: db,
 	}
 }
 
 type actionTokenRepo struct {
-	db *sql.DB
+	db integrations.SqlDB
 }
 
 func (a *actionTokenRepo) CreateActionToken(ctx context.Context, dto models.ActionTokenDTO) (*models.ActionTokenDTO, error) {

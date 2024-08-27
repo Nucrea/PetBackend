@@ -2,6 +2,7 @@ package repos
 
 import (
 	"backend/src/core/models"
+	"backend/src/integrations"
 	"context"
 	"database/sql"
 	"errors"
@@ -21,12 +22,12 @@ type UserRepo interface {
 	GetUserByEmail(ctx context.Context, login string) (*models.UserDTO, error)
 }
 
-func NewUserRepo(db *sql.DB) UserRepo {
+func NewUserRepo(db integrations.SqlDB) UserRepo {
 	return &userRepo{db}
 }
 
 type userRepo struct {
-	db *sql.DB
+	db integrations.SqlDB
 }
 
 func (u *userRepo) CreateUser(ctx context.Context, dto models.UserDTO) (*models.UserDTO, error) {
