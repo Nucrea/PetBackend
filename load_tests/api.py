@@ -66,3 +66,8 @@ class BackendApi():
         response = self.http.client.get("/dummy", headers=headers)
         if response.status_code != 200:
             raise AssertionError('something wrong')
+        
+    def health_get(self):
+        response = self.http.client.get("/health")
+        if response.status_code != 200:
+            raise AssertionError('something wrong')
