@@ -10,8 +10,6 @@ type Charset interface {
 	TestRune(char rune) bool
 	RandomRune(r RandInt) rune
 	RandomString(r RandInt, size int) string
-
-	String() string
 }
 
 func NewCharsetFromASCII(offset, size int) Charset {
@@ -40,13 +38,13 @@ func (c charsetASCII) RandomString(r RandInt, size int) string {
 	return builder.String()
 }
 
-func (c charsetASCII) String() string {
-	builder := strings.Builder{}
-	for i := 0; i < c.size; i++ {
-		builder.WriteRune(rune(c.offset + i))
-	}
-	return builder.String()
-}
+// func (c charsetASCII) String() string {
+// 	builder := strings.Builder{}
+// 	for i := 0; i < c.size; i++ {
+// 		builder.WriteRune(rune(c.offset + i))
+// 	}
+// 	return builder.String()
+// }
 
 func NewCharsetFromString(s string) Charset {
 	charsArray := make([]rune, len(s))
@@ -84,13 +82,13 @@ func (c charsetFromString) RandomString(r RandInt, size int) string {
 	return builder.String()
 }
 
-func (c charsetFromString) String() string {
-	builder := strings.Builder{}
-	for _, v := range c.charsArray {
-		builder.WriteRune(v)
-	}
-	return builder.String()
-}
+// func (c charsetFromString) String() string {
+// 	builder := strings.Builder{}
+// 	for _, v := range c.charsArray {
+// 		builder.WriteRune(v)
+// 	}
+// 	return builder.String()
+// }
 
 func NewCharsetUnion(opts ...Charset) Charset {
 	charsets := []Charset{}
@@ -130,6 +128,6 @@ func (c charsetUnion) RandomString(r RandInt, size int) string {
 	return builder.String()
 }
 
-func (c charsetUnion) String() string {
-	return ""
-}
+// func (c charsetUnion) String() string {
+// 	return ""
+// }

@@ -1,11 +1,13 @@
 package services
 
 import (
+	"backend/src/cache"
 	"backend/src/core/models"
 	"backend/src/core/repos"
 	"backend/src/core/utils"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +19,10 @@ var (
 	ErrUserWrongToken    = fmt.Errorf("bad user token")
 	ErrUserBadPassword   = fmt.Errorf("password must contain at least 8 characters")
 	// ErrUserInternal = fmt.Errorf("unexpected error. contact tech support")
+)
+
+const (
+	userCacheTtl = time.Hour
 )
 
 type UserService interface {
@@ -33,8 +39,8 @@ type UserServiceDeps struct {
 	Jwt             utils.JwtUtil
 	Password        utils.PasswordUtil
 	UserRepo        repos.UserRepo
-	UserCache       repos.Cache[string, models.UserDTO]
-	JwtCache        repos.Cache[string, string]
+	UserCache       cache.Cache[string, models.UserDTO]
+	JwtCache        cache.Cache[string, string]
 	EmailRepo       repos.EmailRepo
 	ActionTokenRepo repos.ActionTokenRepo
 }
@@ -78,7 +84,7 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 		return nil, err
 	}
 
-	u.deps.UserCache.Set(result.Id, *result, -1)
+	u.deps.UserCache.Set(result.Id, *result, cache.Expiration{Ttl: userCacheTtl})
 
 	return result, nil
 }
@@ -102,7 +108,7 @@ func (u *userService) AuthenticateUser(ctx context.Context, email, password stri
 		return "", err
 	}
 
-	u.deps.UserCache.Set(user.Id, *user, -1)
+	u.deps.UserCache.Set(user.Id, *user, cache.Expiration{Ttl: userCacheTtl})
 
 	return jwt, nil
 }
@@ -178,7 +184,7 @@ func (u *userService) updatePassword(ctx context.Context, user models.UserDTO, n
 }
 
 func (u *userService) getUserById(ctx context.Context, userId string) (*models.UserDTO, error) {
-	if user, ok := u.deps.UserCache.Get(userId); ok {
+	if user, ok := u.deps.UserCache.GetEx(userId, cache.Expiration{Ttl: userCacheTtl}); ok {
 		return &user, nil
 	}
 
@@ -190,7 +196,7 @@ func (u *userService) getUserById(ctx context.Context, userId string) (*models.U
 		return nil, ErrUserNotExists
 	}
 
-	u.deps.UserCache.Set(user.Id, *user, -1)
+	u.deps.UserCache.Set(user.Id, *user, cache.Expiration{Ttl: userCacheTtl})
 
 	return user, nil
 }
@@ -210,7 +216,7 @@ func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*mode
 		return nil, err
 	}
 
-	u.deps.JwtCache.Set(tokenStr, payload.UserId, -1)
+	u.deps.JwtCache.Set(tokenStr, payload.UserId, cache.Expiration{ExpiresAt: payload.ExpiresAt.Time})
 
 	return user, nil
 }

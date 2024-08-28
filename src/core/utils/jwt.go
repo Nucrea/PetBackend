@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rsa"
 	"fmt"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -32,7 +33,12 @@ type jwtUtil struct {
 }
 
 func (j *jwtUtil) Create(payload JwtPayload) (string, error) {
-	claims := &JwtClaims{JwtPayload: payload}
+	claims := &JwtClaims{
+		JwtPayload: payload,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		},
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	tokenStr, err := token.SignedString(j.privateKey)
 	if err != nil {

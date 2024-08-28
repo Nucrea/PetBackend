@@ -2,6 +2,7 @@ package src
 
 import (
 	"backend/src/args_parser"
+	"backend/src/cache"
 	"backend/src/client_notifier"
 	"backend/src/config"
 	"backend/src/core/models"
@@ -114,9 +115,10 @@ func (a *App) Run(p RunParams) {
 			userRepo        = repos.NewUserRepo(sqlDb)
 			emailRepo       = repos.NewEmailRepo()
 			actionTokenRepo = repos.NewActionTokenRepo(sqlDb)
-			userCache       = repos.NewCacheInmemSharded[models.UserDTO](60*60, repos.ShardingTypeInteger)
-			jwtCache        = repos.NewCacheInmemSharded[string](60, repos.ShardingTypeJWT)
-			linksCache      = repos.NewCacheInmem[string, string](7 * 24 * 60 * 60)
+
+			userCache  = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
+			jwtCache   = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
+			linksCache = cache.NewCacheInmem[string, string]()
 		)
 
 		// Periodically trigger cache cleanup
@@ -124,14 +126,16 @@ func (a *App) Run(p RunParams) {
 			tmr := time.NewTicker(5 * time.Minute)
 			defer tmr.Stop()
 
+			batchSize := 100
+
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-tmr.C:
-					userCache.CheckExpired()
-					jwtCache.CheckExpired()
-					linksCache.CheckExpired()
+					userCache.CheckExpired(batchSize)
+					jwtCache.CheckExpired(batchSize)
+					linksCache.CheckExpired(batchSize)
 				}
 			}
 		}()
