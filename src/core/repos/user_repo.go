@@ -34,7 +34,7 @@ type userRepo struct {
 }
 
 func (u *userRepo) CreateUser(ctx context.Context, dto models.UserDTO) (*models.UserDTO, error) {
-	_, span := u.tracer.Start(ctx, "postgres")
+	_, span := u.tracer.Start(ctx, "postgres::CreateUser")
 	defer span.End()
 
 	query := `insert into users (email, secret, name) values ($1, $2, $3) returning id;`
@@ -54,7 +54,7 @@ func (u *userRepo) CreateUser(ctx context.Context, dto models.UserDTO) (*models.
 }
 
 func (u *userRepo) UpdateUser(ctx context.Context, userId string, dto models.UserUpdateDTO) error {
-	_, span := u.tracer.Start(ctx, "postgres")
+	_, span := u.tracer.Start(ctx, "postgres::UpdateUser")
 	defer span.End()
 
 	query := `update users set secret=$1, name=$2 where id = $3;`
@@ -67,7 +67,7 @@ func (u *userRepo) UpdateUser(ctx context.Context, userId string, dto models.Use
 }
 
 func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO, error) {
-	_, span := u.tracer.Start(ctx, "postgres")
+	_, span := u.tracer.Start(ctx, "postgres::GetUserById")
 	defer span.End()
 
 	query := `select id, email, secret, name from users where id = $1;`
@@ -86,7 +86,7 @@ func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO,
 }
 
 func (u *userRepo) GetUserByEmail(ctx context.Context, login string) (*models.UserDTO, error) {
-	_, span := u.tracer.Start(ctx, "postgres")
+	_, span := u.tracer.Start(ctx, "postgres::GetUserByEmail")
 	defer span.End()
 
 	query := `select id, email, secret, name from users where email = $1;`

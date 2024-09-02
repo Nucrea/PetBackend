@@ -28,14 +28,14 @@ func NewShortlinkCreateHandler(shortlinkService services.ShortlinkService) gin.H
 		}
 		u.Scheme = "https"
 
-		linkId, err := shortlinkService.CreateLink(u.String())
+		linkId, err := shortlinkService.CreateShortlink(ctx, u.String())
 		if err != nil {
 			ctx.Data(500, "plain/text", []byte(err.Error()))
 			return
 		}
 
 		resultBody, err := json.Marshal(shortlinkCreateOutput{
-			Link: "https:/nucrea.ru/s/" + linkId,
+			Link: "https://nucrea.ru/s/" + linkId,
 		})
 		if err != nil {
 			ctx.AbortWithError(500, err)
@@ -50,7 +50,7 @@ func NewShortlinkResolveHandler(shortlinkService services.ShortlinkService) gin.
 	return func(ctx *gin.Context) {
 		linkId := ctx.Param("linkId")
 
-		linkUrl, err := shortlinkService.GetLink(linkId)
+		linkUrl, err := shortlinkService.GetShortlink(ctx, linkId)
 		if err != nil {
 			ctx.AbortWithError(500, err)
 			return

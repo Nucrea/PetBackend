@@ -117,8 +117,8 @@ func (a *App) Run(p RunParams) {
 			traceSdk.WithSampler(traceSdk.AlwaysSample()),
 			traceSdk.WithBatcher(
 				tracerExporter,
-				traceSdk.WithMaxQueueSize(4096),
-				traceSdk.WithMaxExportBatchSize(1024),
+				traceSdk.WithMaxQueueSize(8192),
+				traceSdk.WithMaxExportBatchSize(2048),
 			),
 		)
 		tracer = tracerProvider.Tracer("backend")
@@ -137,6 +137,7 @@ func (a *App) Run(p RunParams) {
 			userRepo        = repos.NewUserRepo(sqlDb, tracer)
 			emailRepo       = repos.NewEmailRepo()
 			actionTokenRepo = repos.NewActionTokenRepo(sqlDb)
+			shortlinkRepo   = repos.NewShortlinkRepo(sqlDb, tracer)
 
 			userCache  = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
 			jwtCache   = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
@@ -176,8 +177,12 @@ func (a *App) Run(p RunParams) {
 		shortlinkService = services.NewShortlinkSevice(
 			services.NewShortlinkServiceParams{
 				Cache: linksCache,
+				Repo:  shortlinkRepo,
 			},
 		)
+
+		// TODO: Run cleanup routine
+		// go shortlinkService.ShortlinkRoutine(ctx)
 	}
 
 	clientNotifier := client_notifier.NewBasicNotifier()

@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -18,8 +20,11 @@ func NewTracingMiddleware(tracer trace.Tracer) gin.HandlerFunc {
 
 		ctx := prop.Extract(savedCtx, propagation.HeaderCarrier(c.Request.Header))
 
-		ctx, span := tracer.Start(ctx, c.Request.URL.Path)
+		ctx, span := tracer.Start(ctx, fmt.Sprintf("%s  %s", c.Request.Method, c.Request.URL.Path))
 		defer span.End()
+
+		traceId := span.SpanContext().TraceID()
+		c.Header("X-Trace-Id", traceId.String())
 
 		c.Request = c.Request.WithContext(ctx)
 

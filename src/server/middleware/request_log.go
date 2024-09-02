@@ -19,6 +19,7 @@ func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus 
 		if requestId == "" {
 			requestId = uuid.New().String()
 		}
+		c.Header("X-Request-Id", requestId)
 
 		log.SetCtxRequestId(c, requestId)
 

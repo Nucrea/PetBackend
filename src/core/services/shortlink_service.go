@@ -3,46 +3,75 @@ package services
 import (
 	"backend/src/cache"
 	"backend/src/charsets"
+	"backend/src/core/repos"
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
 )
 
 type ShortlinkService interface {
-	CreateLink(in string) (string, error)
-	GetLink(id string) (string, error)
+	CreateShortlink(ctx context.Context, url string) (string, error)
+	GetShortlink(ctx context.Context, id string) (string, error)
+	ShortlinkRoutine(ctx context.Context) error
 }
 
 type NewShortlinkServiceParams struct {
-	Endpoint string
-	Cache    cache.Cache[string, string]
+	Cache cache.Cache[string, string]
+	Repo  repos.ShortlinkRepo
 }
 
 func NewShortlinkSevice(params NewShortlinkServiceParams) ShortlinkService {
 	return &shortlinkService{
 		cache: params.Cache,
+		repo:  params.Repo,
 	}
 }
 
 type shortlinkService struct {
 	cache cache.Cache[string, string]
+	repo  repos.ShortlinkRepo
 }
 
-func (s *shortlinkService) CreateLink(in string) (string, error) {
+func (s *shortlinkService) CreateShortlink(ctx context.Context, url string) (string, error) {
 	charset := charsets.GetCharset(charsets.CharsetTypeAll)
 
 	src := rand.NewSource(time.Now().UnixMicro())
 	randGen := rand.New(src)
-	str := charset.RandomString(randGen, 10)
+	id := charset.RandomString(randGen, 10)
 
-	s.cache.Set(str, in, cache.Expiration{Ttl: 7 * 24 * time.Hour})
-	return str, nil
+	expiration := time.Now().Add(7 * 24 * time.Hour)
+
+	dto := repos.ShortlinkDTO{
+		Id:         id,
+		Url:        url,
+		Expiration: expiration,
+	}
+	if err := s.repo.AddShortlink(ctx, dto); err != nil {
+		return "", err
+	}
+
+	s.cache.Set(id, url, cache.Expiration{ExpiresAt: expiration})
+
+	return id, nil
 }
 
-func (s *shortlinkService) GetLink(id string) (string, error) {
-	val, ok := s.cache.Get(id)
-	if !ok {
+func (s *shortlinkService) GetShortlink(ctx context.Context, id string) (string, error) {
+	if link, ok := s.cache.Get(id); ok {
+		return link, nil
+	}
+
+	link, err := s.repo.GetShortlink(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if link == nil {
 		return "", fmt.Errorf("link does not exist or expired")
 	}
-	return val, nil
+
+	return link.Url, nil
+}
+
+func (s *shortlinkService) ShortlinkRoutine(ctx context.Context) error {
+	return nil
 }
