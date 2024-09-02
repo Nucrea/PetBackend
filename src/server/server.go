@@ -12,6 +12,7 @@ import (
 	"net"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Server struct {
@@ -25,6 +26,7 @@ type NewServerOpts struct {
 	Notifier         client_notifier.ClientNotifier
 	UserService      services.UserService
 	ShortlinkService services.ShortlinkService
+	Tracer           trace.Tracer
 }
 
 func New(opts NewServerOpts) *Server {
@@ -40,7 +42,7 @@ func New(opts NewServerOpts) *Server {
 	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
 
 	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
-	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, prometheus))
+	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
 
 	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Logger, opts.Notifier))
 

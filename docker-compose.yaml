@@ -28,7 +28,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - prometheus-volume:/etc/prometheus
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
 
   node_exporter:
     image: quay.io/prometheus/node-exporter:latest
@@ -42,6 +42,36 @@ services:
     volumes:
       - '/:/host:ro,rslave'
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.108.0
+    volumes:
+      - ./deploy/otel-collector.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - 8888:8888 # Prometheus metrics exposed by the Collector
+      - 8889:8889 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      # - 4317:4317 # OTLP gRPC receiver
+      - 4318:4318 # OTLP http receiver
+
+  tempo-init:
+    image: &tempoImage grafana/tempo:2.3.1
+    user: root
+    entrypoint:
+      - "chown"
+      - "10001:10001"
+      - "/var/tempo"
+    volumes:
+      - tempo-volume:/var/tempo
+
+  tempo:
+    image: *tempoImage
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./deploy/tempo.yaml:/etc/tempo.yaml
+      - tempo-volume:/var/tempo
+    depends_on:
+      - tempo-init
+
   # backend:
   #   build: .
   #     # dockerfile: ./dockerfile
@@ -53,4 +83,5 @@ services:
 volumes:
   postgres-volume:
   grafana-volume:
+  tempo-volume:
   prometheus-volume:

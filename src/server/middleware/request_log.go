@@ -7,18 +7,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
-func NewRequestLogMiddleware(logger log.Logger, prometheus *integrations.Prometheus) gin.HandlerFunc {
+func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus *integrations.Prometheus) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		prometheus.RequestInc()
 		defer prometheus.RequestDec()
+
+		_, span := tracer.Start(c.Request.Context(), c.Request.URL.Path)
+		defer span.End()
 
 		requestId := c.GetHeader("X-Request-Id")
 		if requestId == "" {
 			requestId = uuid.New().String()
 		}
 
+		span.SetAttributes(attribute.String("requestId", c.ClientIP()))
 		log.SetCtxRequestId(c, requestId)
 
 		path := c.Request.URL.Path

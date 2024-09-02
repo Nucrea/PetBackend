@@ -22,6 +22,9 @@ import (
 	"runtime/pprof"
 	"syscall"
 	"time"
+
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 type App struct{}
@@ -160,6 +163,17 @@ func (a *App) Run(p RunParams) {
 
 	clientNotifier := client_notifier.NewBasicNotifier()
 
+	tracerExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL("http://localhost:4318"))
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed initializing tracer")
+	}
+	tracerProvider := trace.NewTracerProvider(
+		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithBatcher(tracerExporter),
+	)
+
+	tracer := tracerProvider.Tracer("backend")
+
 	// Start profiling
 	if args.GetProfilePath() != "" {
 		pprofFile, err := os.Create(args.GetProfilePath())
@@ -185,6 +199,7 @@ func (a *App) Run(p RunParams) {
 			Notifier:         clientNotifier,
 			ShortlinkService: shortlinkService,
 			UserService:      userService,
+			Tracer:           tracer,
 		},
 	)
 	srv.Run(ctx, conf.GetPort())
