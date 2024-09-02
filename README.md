@@ -15,3 +15,6 @@
 
 Профилирую
 ![Снимок экрана 2024-08-18 223407](https://github.com/user-attachments/assets/9984e768-c355-40f6-ae9c-8beda010add0)
+
+Трассирую
+![image_2024-09-02_21-20-55](https://github.com/user-attachments/assets/a06dbfb4-5822-44d3-9c75-e2a0feee29ba)
