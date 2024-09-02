@@ -24,7 +24,8 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/sdk/trace"
+	traceSdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type App struct{}
@@ -105,6 +106,24 @@ func (a *App) Run(p RunParams) {
 		}
 	}
 
+	var tracer trace.Tracer
+	{
+		tracerExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL("http://localhost:4318"))
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed initializing tracer")
+		}
+
+		tracerProvider := traceSdk.NewTracerProvider(
+			traceSdk.WithSampler(traceSdk.AlwaysSample()),
+			traceSdk.WithBatcher(
+				tracerExporter,
+				traceSdk.WithMaxQueueSize(4096),
+				traceSdk.WithMaxExportBatchSize(1024),
+			),
+		)
+		tracer = tracerProvider.Tracer("backend")
+	}
+
 	// Build business-logic objects
 	var (
 		userService      services.UserService
@@ -115,7 +134,7 @@ func (a *App) Run(p RunParams) {
 			jwtUtil      = utils.NewJwtUtil(key)
 			passwordUtil = utils.NewPasswordUtil()
 
-			userRepo        = repos.NewUserRepo(sqlDb)
+			userRepo        = repos.NewUserRepo(sqlDb, tracer)
 			emailRepo       = repos.NewEmailRepo()
 			actionTokenRepo = repos.NewActionTokenRepo(sqlDb)
 
@@ -162,17 +181,6 @@ func (a *App) Run(p RunParams) {
 	}
 
 	clientNotifier := client_notifier.NewBasicNotifier()
-
-	tracerExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL("http://localhost:4318"))
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed initializing tracer")
-	}
-	tracerProvider := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithBatcher(tracerExporter),
-	)
-
-	tracer := tracerProvider.Tracer("backend")
 
 	// Start profiling
 	if args.GetProfilePath() != "" {

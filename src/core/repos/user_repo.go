@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // type userDAO struct {
@@ -22,15 +24,19 @@ type UserRepo interface {
 	GetUserByEmail(ctx context.Context, login string) (*models.UserDTO, error)
 }
 
-func NewUserRepo(db integrations.SqlDB) UserRepo {
-	return &userRepo{db}
+func NewUserRepo(db integrations.SqlDB, tracer trace.Tracer) UserRepo {
+	return &userRepo{db, tracer}
 }
 
 type userRepo struct {
-	db integrations.SqlDB
+	db     integrations.SqlDB
+	tracer trace.Tracer
 }
 
 func (u *userRepo) CreateUser(ctx context.Context, dto models.UserDTO) (*models.UserDTO, error) {
+	_, span := u.tracer.Start(ctx, "postgres")
+	defer span.End()
+
 	query := `insert into users (email, secret, name) values ($1, $2, $3) returning id;`
 	row := u.db.QueryRowContext(ctx, query, dto.Email, dto.Secret, dto.Name)
 
@@ -48,6 +54,9 @@ func (u *userRepo) CreateUser(ctx context.Context, dto models.UserDTO) (*models.
 }
 
 func (u *userRepo) UpdateUser(ctx context.Context, userId string, dto models.UserUpdateDTO) error {
+	_, span := u.tracer.Start(ctx, "postgres")
+	defer span.End()
+
 	query := `update users set secret=$1, name=$2 where id = $3;`
 	_, err := u.db.ExecContext(ctx, query, dto.Secret, dto.Name, userId)
 	if err != nil {
@@ -58,6 +67,9 @@ func (u *userRepo) UpdateUser(ctx context.Context, userId string, dto models.Use
 }
 
 func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO, error) {
+	_, span := u.tracer.Start(ctx, "postgres")
+	defer span.End()
+
 	query := `select id, email, secret, name from users where id = $1;`
 	row := u.db.QueryRowContext(ctx, query, id)
 
@@ -74,6 +86,9 @@ func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO,
 }
 
 func (u *userRepo) GetUserByEmail(ctx context.Context, login string) (*models.UserDTO, error) {
+	_, span := u.tracer.Start(ctx, "postgres")
+	defer span.End()
+
 	query := `select id, email, secret, name from users where email = $1;`
 	row := u.db.QueryRowContext(ctx, query, login)
 

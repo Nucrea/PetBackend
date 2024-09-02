@@ -35,6 +35,8 @@ func New(opts NewServerOpts) *Server {
 	}
 
 	r := gin.New()
+	r.ContextWithFallback = true // Use it to allow getting values from c.Request.Context()
+
 	r.Static("/webapp", "./webapp")
 	r.GET("/health", handlers.NewDummyHandler())
 
@@ -43,6 +45,7 @@ func New(opts NewServerOpts) *Server {
 
 	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
 	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
+	r.Use(middleware.NewTracingMiddleware(opts.Tracer))
 
 	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Logger, opts.Notifier))
 

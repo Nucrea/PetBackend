@@ -18,6 +18,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - grafana-volume:/var/lib/grafana
+      - ./deploy/grafana-ds.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
 
   prometheus:
     image: prom/prometheus:v2.54.0
