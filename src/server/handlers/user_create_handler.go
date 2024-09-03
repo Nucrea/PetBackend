@@ -50,7 +50,7 @@ func NewUserCreateHandler(logger logger.Logger, userService services.UserService
 			return
 		}
 		if err != nil {
-			ctxLogger.Error().Err(err).Msg("create user error")
+			ctxLogger.Error().Err(err).Msg("unexpected create user error")
 			c.Data(500, "plain/text", []byte(err.Error()))
 			return
 		}

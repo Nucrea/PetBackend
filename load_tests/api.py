@@ -71,3 +71,14 @@ class BackendApi():
         response = self.http.client.get("/health")
         if response.status_code != 200:
             raise AssertionError('something wrong')
+        
+    def shortlink_create(self, url: string) -> string:
+        response = self.http.client.post("/s/new?url=" + url)
+        if response.status_code != 200:
+            raise AssertionError('can not login user')
+        
+        link = response.json()['link']
+        if link == '':
+            raise AssertionError('empty user token')
+        
+        return link

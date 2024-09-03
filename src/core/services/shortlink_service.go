@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+var (
+	ErrShortlinkNotexist = fmt.Errorf("shortlink does not exist or expired")
+	ErrShortlinkExpired  = fmt.Errorf("shortlink expired")
+)
+
 type ShortlinkService interface {
 	CreateShortlink(ctx context.Context, url string) (string, error)
 	GetShortlink(ctx context.Context, id string) (string, error)
@@ -66,7 +71,10 @@ func (s *shortlinkService) GetShortlink(ctx context.Context, id string) (string,
 		return "", err
 	}
 	if link == nil {
-		return "", fmt.Errorf("link does not exist or expired")
+		return "", ErrShortlinkNotexist
+	}
+	if time.Now().After(link.Expiration) {
+		return "", ErrShortlinkExpired
 	}
 
 	return link.Url, nil

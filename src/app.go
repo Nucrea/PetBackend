@@ -114,7 +114,7 @@ func (a *App) Run(p RunParams) {
 		}
 
 		tracerProvider := traceSdk.NewTracerProvider(
-			traceSdk.WithSampler(traceSdk.AlwaysSample()),
+			traceSdk.WithSampler(traceSdk.TraceIDRatioBased(0.1)),
 			traceSdk.WithBatcher(
 				tracerExporter,
 				traceSdk.WithMaxQueueSize(8192),

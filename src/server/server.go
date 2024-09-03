@@ -50,8 +50,8 @@ func New(opts NewServerOpts) *Server {
 	r.GET("/pooling", handlers.NewLongPoolingHandler(opts.Logger, opts.Notifier))
 
 	linkGroup := r.Group("/s")
-	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(opts.ShortlinkService))
-	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(opts.ShortlinkService))
+	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(opts.Logger, opts.ShortlinkService))
+	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(opts.Logger, opts.ShortlinkService))
 
 	userGroup := r.Group("/user")
 	userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
