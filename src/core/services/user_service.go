@@ -122,9 +122,10 @@ func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) err
 	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(
 		ctx,
 		models.ActionTokenDTO{
-			UserId: user.Id,
-			Value:  uuid.New().String(),
-			Target: models.ActionTokenTargetForgotPassword,
+			UserId:     user.Id,
+			Value:      uuid.New().String(),
+			Target:     models.ActionTokenTargetForgotPassword,
+			Expiration: time.Now().Add(1 * time.Hour),
 		},
 	)
 	if err != nil {

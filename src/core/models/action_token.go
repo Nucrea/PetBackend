@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type ActionTokenTarget int
 
 const (
@@ -8,8 +10,9 @@ const (
 )
 
 type ActionTokenDTO struct {
-	Id     string
-	UserId string
-	Value  string
-	Target ActionTokenTarget
+	Id         string
+	UserId     string
+	Value      string
+	Target     ActionTokenTarget
+	Expiration time.Time
 }
