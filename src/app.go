@@ -92,6 +92,8 @@ func (a *App) Run(p RunParams) {
 		logger.Fatal().Err(err).Msg("failed connecting to postgres")
 	}
 
+	kafka := integrations.NewKafka(conf.GetKafkaUrl(), conf.GetKafkaTopic())
+
 	var key *rsa.PrivateKey
 	{
 		keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
@@ -135,9 +137,9 @@ func (a *App) Run(p RunParams) {
 			passwordUtil = utils.NewPasswordUtil()
 
 			userRepo        = repos.NewUserRepo(sqlDb, tracer)
-			emailRepo       = repos.NewEmailRepo()
 			actionTokenRepo = repos.NewActionTokenRepo(sqlDb)
 			shortlinkRepo   = repos.NewShortlinkRepo(sqlDb, tracer)
+			eventRepo       = repos.NewEventRepo(kafka)
 
 			userCache  = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
 			jwtCache   = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
@@ -170,7 +172,7 @@ func (a *App) Run(p RunParams) {
 				UserRepo:        userRepo,
 				UserCache:       userCache,
 				JwtCache:        jwtCache,
-				EmailRepo:       emailRepo,
+				EventRepo:       *eventRepo,
 				ActionTokenRepo: actionTokenRepo,
 			},
 		)
