@@ -7,6 +7,7 @@ import (
 	"backend/src/logger"
 	"backend/src/server/handlers"
 	"backend/src/server/middleware"
+	"backend/src/server/utils"
 	"context"
 	"fmt"
 	"net"
@@ -61,6 +62,10 @@ func New(opts NewServerOpts) *Server {
 	{
 		dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
 		dummyGroup.GET("", handlers.NewDummyHandler())
+		dummyGroup.POST("/forgot-password", func(c *gin.Context) {
+			user := utils.GetUserFromRequest(c)
+			opts.UserService.HelpPasswordForgot(c, user.Id)
+		})
 	}
 
 	return &Server{
