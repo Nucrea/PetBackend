@@ -2,36 +2,36 @@ package integrations
 
 import (
 	"context"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
 type Kafka struct {
-	conn *kafka.Conn
+	writer *kafka.Writer
 }
 
-func (k *Kafka) Connect(ctx context.Context) error {
-	conn, err := kafka.DialContext(ctx, "", "")
-	if err != nil {
-		return err
+func NewKafka(addr, topic string) *Kafka {
+	w := &kafka.Writer{
+		Addr:                   kafka.TCP(addr),
+		Topic:                  topic,
+		Balancer:               &kafka.RoundRobin{},
+		AllowAutoTopicCreation: true,
+		BatchSize:              100,
+		BatchTimeout:           100 * time.Millisecond,
 	}
-	defer conn.Close()
 
-	// w := &kafka.Writer{
-	// 	Addr:     kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
-	// 	Topic:    "topic-A",
-	// 	Balancer: &kafka.LeastBytes{},
-	// }
-
-	return nil
+	return &Kafka{
+		writer: w,
+	}
 }
 
-func (k *Kafka) SendMessage() {
-	k.conn.WriteMessages()
-
-	msg := kafka.Message{
-		Topic: "event",
-		Key:   []byte("send_email"),
-		Value: []byte("value"),
-	}
+func (k *Kafka) SendMessage(ctx context.Context, key string, value []byte) error {
+	return k.writer.WriteMessages(
+		context.Background(),
+		kafka.Message{
+			Key:   []byte(key),
+			Value: value,
+		},
+	)
 }

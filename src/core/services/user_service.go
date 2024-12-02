@@ -41,7 +41,7 @@ type UserServiceDeps struct {
 	UserRepo        repos.UserRepo
 	UserCache       cache.Cache[string, models.UserDTO]
 	JwtCache        cache.Cache[string, string]
-	EmailRepo       repos.EmailRepo
+	EventRepo       repos.EventRepo
 	ActionTokenRepo repos.ActionTokenRepo
 }
 
@@ -132,8 +132,7 @@ func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) err
 		return err
 	}
 
-	u.deps.EmailRepo.SendEmailForgotPassword(user.Email, actionToken.Value)
-	return nil
+	return u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, actionToken.Value)
 }
 
 func (u *userService) ChangePasswordForgot(ctx context.Context, userId, newPassword, accessCode string) error {
