@@ -20,6 +20,7 @@ func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus 
 			requestId = uuid.New().String()
 		}
 		c.Header("X-Request-Id", requestId)
+		c.Header("Access-Control-Allow-Origin", "*")
 
 		log.SetCtxRequestId(c, requestId)
 
