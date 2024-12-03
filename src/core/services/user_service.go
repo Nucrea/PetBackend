@@ -29,6 +29,7 @@ type UserService interface {
 	CreateUser(ctx context.Context, params UserCreateParams) (*models.UserDTO, error)
 	AuthenticateUser(ctx context.Context, login, password string) (string, error)
 	ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error)
+	HelpPasswordForgot(ctx context.Context, userId string) error
 }
 
 func NewUserService(deps UserServiceDeps) UserService {
@@ -83,6 +84,8 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	if err != nil {
 		return nil, err
 	}
+
+	u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, "123")
 
 	u.deps.UserCache.Set(result.Id, *result, cache.Expiration{Ttl: userCacheTtl})
 
