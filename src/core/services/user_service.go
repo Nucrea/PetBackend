@@ -29,7 +29,10 @@ type UserService interface {
 	CreateUser(ctx context.Context, params UserCreateParams) (*models.UserDTO, error)
 	AuthenticateUser(ctx context.Context, login, password string) (string, error)
 	ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error)
-	HelpPasswordForgot(ctx context.Context, userId string) error
+
+	ForgotPassword(ctx context.Context, userId string) error
+	ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error
+	ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error
 }
 
 func NewUserService(deps UserServiceDeps) UserService {
@@ -85,8 +88,6 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 		return nil, err
 	}
 
-	u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, "123")
-
 	u.deps.UserCache.Set(result.Id, *result, cache.Expiration{Ttl: userCacheTtl})
 
 	return result, nil
@@ -116,7 +117,7 @@ func (u *userService) AuthenticateUser(ctx context.Context, email, password stri
 	return jwt, nil
 }
 
-func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) error {
+func (u *userService) ForgotPassword(ctx context.Context, userId string) error {
 	user, err := u.getUserById(ctx, userId)
 	if err != nil {
 		return err
@@ -138,13 +139,13 @@ func (u *userService) HelpPasswordForgot(ctx context.Context, userId string) err
 	return u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, actionToken.Value)
 }
 
-func (u *userService) ChangePasswordForgot(ctx context.Context, userId, newPassword, accessCode string) error {
+func (u *userService) ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error {
 	user, err := u.getUserById(ctx, userId)
 	if err != nil {
 		return err
 	}
 
-	code, err := u.deps.ActionTokenRepo.PopActionToken(ctx, userId, accessCode, models.ActionTokenTargetForgotPassword)
+	code, err := u.deps.ActionTokenRepo.PopActionToken(ctx, userId, actionToken, models.ActionTokenTargetForgotPassword)
 	if err != nil {
 		return err
 	}
