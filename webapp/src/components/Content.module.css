@@ -1,0 +1,25 @@
+.content {
+    padding: 8px;
+    margin: 16px;
+    background-color: bisque;
+    border: 1px solid var(--mantine-color-gray-2);
+    height: 100%;
+    display: flex;
+}
+
+.canvas {
+    height: 80vh;
+    margin: 16px;
+    /* flex-grow: 1; */
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: 8px;
+    /* background-color: var(--mantine-color-gray-1); */
+}
+
+.reactFlow {
+    margin: 16px;
+    height: 80vh;
+    border: 1px solid var(--mantine-color-gray-2);
+    border-radius: 8px;
+    background-color: var(--mantine-color-gray-1);
+}

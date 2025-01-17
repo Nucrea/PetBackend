@@ -1,0 +1,11 @@
+/* body {
+    min-height: 100vh;
+} */
+
+.divMain {
+    display: flex;
+    flex-direction: column;
+    /* background-color: red; */
+}
+
+html, body, body > div:first-child, div#__next, div#__next > div { min-height: 100vh; }
