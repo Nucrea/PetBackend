@@ -1,18 +1,14 @@
-import Image from "next/image";
-import localFont from "next/font/local";
-import { useCallback, useMemo, useRef } from "react";
-import axios from "axios";
-import { HeaderTabs } from "@/components/HeaderTabs";
-import { createTheme, MantineProvider } from '@mantine/core';
-import { FooterSocial } from "@/components/FooterSocial";
-import Content from "@/components/Content";
+// import { HeaderTabs } from "@/components/HeaderTabs";
+import { MantineProvider } from '@mantine/core';
+// import Content from "@/components/Content";
 
 export default function Home() {
   return (
     <MantineProvider>
       <div className="divMain">
-        <HeaderTabs/>
-        <Content/>
+        {/* <HeaderTabs/>
+        <Content/> */}
+        <h1>Test</h1>
         {/* <FooterSocial/> */}
       </div>
     </MantineProvider> 
