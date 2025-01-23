@@ -8,7 +8,7 @@ export default function Home() {
       <div className="divMain">
         {/* <HeaderTabs/>
         <Content/> */}
-        <h1>Test</h1>
+        <h1>Test!!!</h1>
         {/* <FooterSocial/> */}
       </div>
     </MantineProvider> 
