@@ -1,0 +1,11 @@
+app:
+  serviceUrl: "https://localhost:8080"
+kafka:
+  brokers:
+   - localhost:9092
+  topic: backend_events
+smtp:
+  server: smtp.yandex.ru
+  port: 587
+  email: ""
+  password: ""
