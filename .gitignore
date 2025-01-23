@@ -33,5 +33,4 @@ go.work.sum
 .run
 
 # temporary
-coworker/
 webapp/
