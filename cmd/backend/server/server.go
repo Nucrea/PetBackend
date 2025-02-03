@@ -46,10 +46,6 @@ func New(opts NewServerOpts) *Server {
 	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
 	r.Use(middleware.NewTracingMiddleware(opts.Tracer))
 
-	linkGroup := r.Group("/s")
-	linkGroup.POST("/new", handlers.NewShortlinkCreateHandler(opts.Logger, opts.ShortlinkService))
-	linkGroup.GET("/:linkId", handlers.NewShortlinkResolveHandler(opts.Logger, opts.ShortlinkService))
-
 	userGroup := r.Group("/user")
 	userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
 	userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))

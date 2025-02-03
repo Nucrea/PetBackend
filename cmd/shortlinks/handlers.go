@@ -1,8 +1,10 @@
-package handlers
+package main
 
 import (
 	"backend/internal/core/services"
+	"backend/internal/grpc_server/shortlinks"
 	"backend/pkg/logger"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -14,7 +16,41 @@ type shortlinkCreateOutput struct {
 	Link string `json:"link"`
 }
 
-func NewShortlinkCreateHandler(logger logger.Logger, shortlinkService services.ShortlinkService) gin.HandlerFunc {
+type ShortlinksGrpc struct {
+	shortlinks.UnimplementedShortlinksServer
+	log              logger.Logger
+	host             string
+	shortlinkService services.ShortlinkService
+}
+
+func (s *ShortlinksGrpc) Create(ctx context.Context, req *shortlinks.CreateRequest) (*shortlinks.CreateResponse, error) {
+	ctxLogger := s.log.WithContext(ctx)
+
+	rawUrl := req.GetUrl()
+	if rawUrl == "" {
+		ctxLogger.Error().Msg("url query param missing")
+		return nil, fmt.Errorf("url query param missing")
+	}
+
+	u, err := url.Parse(rawUrl)
+	if err != nil {
+		ctxLogger.Error().Err(err).Msg("error parsing url param")
+		return nil, err
+	}
+	u.Scheme = "https"
+
+	linkId, err := s.shortlinkService.CreateShortlink(ctx, u.String())
+	if err != nil {
+		ctxLogger.Error().Err(err).Msg("err creating shortlink")
+		return nil, err
+	}
+
+	return &shortlinks.CreateResponse{
+		Link: fmt.Sprintf("%s/s/%s", s.host, linkId),
+	}, nil
+}
+
+func NewShortlinkCreateHandler(logger logger.Logger, shortlinkService services.ShortlinkService, host string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctxLogger := logger.WithContext(ctx)
 
@@ -41,7 +77,7 @@ func NewShortlinkCreateHandler(logger logger.Logger, shortlinkService services.S
 		}
 
 		resultBody, err := json.Marshal(shortlinkCreateOutput{
-			Link: "https://nucrea.ru/s/" + linkId,
+			Link: fmt.Sprintf("%s/s/%s", host, linkId),
 		})
 		if err != nil {
 			ctxLogger.Error().Err(err).Msg("err marshalling shortlink")

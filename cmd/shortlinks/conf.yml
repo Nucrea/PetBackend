@@ -1,0 +1,3 @@
+http_port: 8081
+grpc_port: 8082
+postgres_url: "postgres://postgres:postgres@localhost:5432/postgres"

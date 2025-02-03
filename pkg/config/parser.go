@@ -23,13 +23,13 @@ type parser[T interface{}] struct {
 }
 
 func (p *parser[T]) ParseFile(path string) (T, error) {
-	fBytes, err := os.ReadFile(path)
+	fileBytes, err := os.ReadFile(path)
 	if err != nil {
 		var t T
 		return t, err
 	}
 
-	return p.parse(fBytes)
+	return p.parse(fileBytes)
 }
 
 func (p *parser[T]) parse(b []byte) (T, error) {
@@ -38,6 +38,7 @@ func (p *parser[T]) parse(b []byte) (T, error) {
 	if err := yaml.Unmarshal(b, &t); err != nil {
 		return t, err
 	}
+
 	if err := p.validate.Struct(t); err != nil {
 		return t, err
 	}

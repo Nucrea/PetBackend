@@ -1,4 +1,6 @@
-package config
+package main
+
+import "backend/pkg/config"
 
 type IConfig interface {
 	GetPort() uint16
@@ -6,6 +8,10 @@ type IConfig interface {
 	GetJwtSigningKey() string
 	GetKafkaUrl() string
 	GetKafkaTopic() string
+}
+
+func LoadConfig(filePath string) (IConfig, error) {
+	return config.NewFromFile[*Config](filePath)
 }
 
 type Config struct {
