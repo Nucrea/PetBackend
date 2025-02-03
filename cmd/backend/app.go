@@ -2,7 +2,6 @@ package main
 
 import (
 	"backend/cmd/backend/args_parser"
-	"backend/cmd/backend/config"
 	"backend/cmd/backend/server"
 	"backend/internal/core/models"
 	"backend/internal/core/repos"
@@ -21,10 +20,6 @@ import (
 	"runtime/pprof"
 	"syscall"
 	"time"
-
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	traceSdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type App struct{}
@@ -76,7 +71,7 @@ func (a *App) Run(p RunParams) {
 		log.Fatalf("failed to create logger object: %v\n", err)
 	}
 
-	conf, err := config.NewFromFile(args.GetConfigPath())
+	conf, err := LoadConfig(args.GetConfigPath())
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to parse config file")
 	}
@@ -107,22 +102,9 @@ func (a *App) Run(p RunParams) {
 		}
 	}
 
-	var tracer trace.Tracer
-	{
-		tracerExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL("http://localhost:4318"))
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed initializing tracer")
-		}
-
-		tracerProvider := traceSdk.NewTracerProvider(
-			traceSdk.WithSampler(traceSdk.TraceIDRatioBased(0.1)),
-			traceSdk.WithBatcher(
-				tracerExporter,
-				traceSdk.WithMaxQueueSize(8192),
-				traceSdk.WithMaxExportBatchSize(2048),
-			),
-		)
-		tracer = tracerProvider.Tracer("backend")
+	tracer, err := integrations.NewTracer("backend")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed initializing tracer")
 	}
 
 	// Build business-logic objects
