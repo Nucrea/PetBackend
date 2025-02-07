@@ -10,7 +10,7 @@ import (
 )
 
 type loginUserInput struct {
-	Login    string `json:"email"`
+	Login    string `json:"email" validate:"required,email"`
 	Password string `json:"password"`
 }
 

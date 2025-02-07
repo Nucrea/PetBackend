@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Handler[Input, Output any] func(ctx context.Context, input Input) (Output, error)
+type Handler[Input, Output interface{}] func(ctx context.Context, input Input) (Output, error)
 
 type ResponseOk struct {
 	Status string      `json:"status"`
