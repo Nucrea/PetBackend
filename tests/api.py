@@ -1,6 +1,13 @@
 import random
 import string
-from locust import HttpUser, FastHttpUser
+import requests
+
+class Requests():
+    def __init__(self, baseUrl):
+        self.baseUrl = baseUrl
+    
+    def post(self, path, json = {}):
+        return requests.post(self.baseUrl + path, json=json)
 
 class Auth():
     token: string
@@ -47,14 +54,19 @@ class BackendApi():
         response = self.httpClient.post(
             "/v1/user/login", 
             json={
-                "email": user.email,
+                "email": user.email+"a",
                 "password": user.password,
             },
         )
+
+        status = response.json()['status']
+        if status == 'error':
+            raise AssertionError(response.json()['error']['message'])
+
         if response.status_code != 200:
             raise AssertionError('can not login user')
-        
-        token = response.json()['token']
+
+        token = response.json()['result']['token']
         if token == '':
             raise AssertionError('empty user token')
         

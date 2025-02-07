@@ -15,7 +15,10 @@ install:
 requirements:
 	pip freeze > requirements.txt
 
-run-web:
+run-integration:
+	python3 -m pytest integration/
+
+run-performance-web:
 	locust -f performance --class-picker --host http://localhost:8080 --processes 16
 
 
