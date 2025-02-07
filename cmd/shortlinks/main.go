@@ -102,14 +102,11 @@ func RunServer(ctx context.Context, log logger.Logger, tracer trace.Tracer, conf
 	linkGroup.POST("/new", NewShortlinkCreateHandler(log, shortlinkService, host))
 	linkGroup.GET("/:linkId", NewShortlinkResolveHandler(log, shortlinkService))
 
-	grpcObj := &ShortlinksGrpc{
-		log:              log,
-		host:             host,
-		shortlinkService: shortlinkService,
-	}
-
 	grpcUnderlying := grpc.NewServer()
-	shortlinks.RegisterShortlinksServer(grpcUnderlying, grpcObj)
+	shortlinks.RegisterShortlinksServer(
+		grpcUnderlying,
+		NewShortlinksGrpc(log, shortlinkService, host),
+	)
 
 	httpServer := httpserver.New(
 		httpserver.NewServerOpts{
