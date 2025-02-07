@@ -29,7 +29,7 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	r := gin.New()
 	r.ContextWithFallback = true // Use it to allow getting values from c.Request.Context()
 
-	r.Static("/webapp", "./webapp")
+	// r.Static("/webapp", "./webapp")
 	r.GET("/health", handlers.NewDummyHandler())
 
 	prometheus := integrations.NewPrometheus()
@@ -39,11 +39,15 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	r.Use(httpserver.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
 	r.Use(httpserver.NewTracingMiddleware(opts.Tracer))
 
-	userGroup := r.Group("/user")
-	userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
-	userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+	v1 := r.Group("/v1")
 
-	dummyGroup := r.Group("/dummy")
+	userGroup := v1.Group("/user")
+	{
+		userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
+		userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+	}
+
+	dummyGroup := v1.Group("/dummy")
 	{
 		dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
 		dummyGroup.GET("", handlers.NewDummyHandler())
