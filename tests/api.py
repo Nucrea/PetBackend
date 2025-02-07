@@ -9,6 +9,7 @@ class Auth():
         self.token = token
 
 class User():
+    id: string
     email: string
     name: string
     password: string
@@ -21,18 +22,16 @@ class User():
 
 
 class BackendApi():
-    http: FastHttpUser
-
-    def __init__(self, http: FastHttpUser):
-        self.http = http
+    def __init__(self, httpClient):
+        self.httpClient = httpClient
 
     def user_create(self) -> User:
         email = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10)) + '@test.test'
         name = ''.join(random.choices(string.ascii_letters, k=10))
         password = 'Abcdef1!!1'
     
-        response = self.http.client.post(
-            "/user/create",
+        response = self.httpClient.post(
+            "/v1/user/create",
             json={
                 "email": email,
                 "password": password,
@@ -45,8 +44,8 @@ class BackendApi():
         return User(email, password, name)
         
     def user_login(self, user: User) -> Auth:        
-        response = self.http.client.post(
-            "/user/login", 
+        response = self.httpClient.post(
+            "/v1/user/login", 
             json={
                 "email": user.email,
                 "password": user.password,
@@ -63,22 +62,11 @@ class BackendApi():
 
     def dummy_get(self, auth: Auth):
         headers = {"X-Auth": auth.token}
-        response = self.http.client.get("/dummy", headers=headers)
+        response = self.httpClient.get("/v1/dummy", headers=headers)
         if response.status_code != 200:
             raise AssertionError('something wrong')
         
     def health_get(self):
-        response = self.http.client.get("/health")
+        response = self.httpClient.get("/health")
         if response.status_code != 200:
             raise AssertionError('something wrong')
-        
-    def shortlink_create(self, url: string) -> string:
-        response = self.http.client.post("/s/new?url=" + url)
-        if response.status_code != 200:
-            raise AssertionError('can not login user')
-        
-        link = response.json()['link']
-        if link == '':
-            raise AssertionError('empty user token')
-        
-        return link

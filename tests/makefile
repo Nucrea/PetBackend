@@ -16,6 +16,6 @@ requirements:
 	pip freeze > requirements.txt
 
 run-web:
-	locust -f tests,loads --class-picker --host http://localhost:8080 --processes 16
+	locust -f performance --class-picker --host http://localhost:8080 --processes 16
 
 
