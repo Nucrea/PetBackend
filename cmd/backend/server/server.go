@@ -39,17 +39,21 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	r.Use(httpserver.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
 	r.Use(httpserver.NewTracingMiddleware(opts.Tracer))
 
-	v1 := r.Group("/v1")
+	r.GET("/verify-user", handlers.NewUserVerifyEmailHandler(opts.Logger, opts.UserService))
 
+	api := r.Group("/api")
+
+	v1 := api.Group("/v1")
 	userGroup := v1.Group("/user")
 	{
 		userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
 		userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+
 	}
 
 	dummyGroup := v1.Group("/dummy")
+	dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
 	{
-		dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
 		dummyGroup.GET("", handlers.NewDummyHandler())
 		dummyGroup.POST("/forgot-password", func(c *gin.Context) {
 			user := utils.GetUserFromRequest(c)

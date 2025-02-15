@@ -50,7 +50,7 @@ func (a *actionTokenRepo) GetActionToken(ctx context.Context, value string, targ
 	query := `
 	select id, user_id from action_tokens 
 	where 
-		value=$2 and target=$3
+		value=$1 and target=$2
 		and CURRENT_TIMESTAMP < expiration;`
 	row := a.db.QueryRowContext(ctx, query, value, target)
 
@@ -67,7 +67,7 @@ func (a *actionTokenRepo) GetActionToken(ctx context.Context, value string, targ
 
 func (a *actionTokenRepo) DeleteActionToken(ctx context.Context, id string) error {
 	query := `delete from action_tokens where id=$1;`
-	if _, err := a.db.ExecContext(ctx, query); err != nil {
+	if _, err := a.db.ExecContext(ctx, query, id); err != nil {
 		return err
 	}
 	return nil
