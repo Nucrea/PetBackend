@@ -3,6 +3,7 @@ create table if not exists users (
     email text unique not null,
     secret text not null,
     name text not null,
+    email_verified boolean not null default false,
 
     primary key (id)
 );

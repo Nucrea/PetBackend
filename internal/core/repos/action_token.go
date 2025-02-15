@@ -9,7 +9,8 @@ import (
 
 type ActionTokenRepo interface {
 	CreateActionToken(ctx context.Context, dto models.ActionTokenDTO) (*models.ActionTokenDTO, error)
-	PopActionToken(ctx context.Context, userId, value string, target models.ActionTokenTarget) (*models.ActionTokenDTO, error)
+	GetActionToken(ctx context.Context, value string, target models.ActionTokenTarget) (*models.ActionTokenDTO, error)
+	DeleteActionToken(ctx context.Context, id string) error
 }
 
 func NewActionTokenRepo(db integrations.SqlDB) ActionTokenRepo {
@@ -43,18 +44,17 @@ func (a *actionTokenRepo) CreateActionToken(ctx context.Context, dto models.Acti
 	}, nil
 }
 
-func (a *actionTokenRepo) PopActionToken(ctx context.Context, userId, value string, target models.ActionTokenTarget) (*models.ActionTokenDTO, error) {
-	query := `
-	delete 
-		from action_tokens 
-		where 
-			user_id=$1 and value=$2 and target=$3 
-			and CURRENT_TIMESTAMP < expiration
-		returning id;`
-	row := a.db.QueryRowContext(ctx, query, userId, value, target)
+func (a *actionTokenRepo) GetActionToken(ctx context.Context, value string, target models.ActionTokenTarget) (*models.ActionTokenDTO, error) {
+	dto := &models.ActionTokenDTO{Value: value, Target: target}
 
-	id := ""
-	err := row.Scan(&id)
+	query := `
+	select id, user_id from action_tokens 
+	where 
+		value=$2 and target=$3
+		and CURRENT_TIMESTAMP < expiration;`
+	row := a.db.QueryRowContext(ctx, query, value, target)
+
+	err := row.Scan(&dto.Id, &dto.UserId)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -62,10 +62,13 @@ func (a *actionTokenRepo) PopActionToken(ctx context.Context, userId, value stri
 		return nil, err
 	}
 
-	return &models.ActionTokenDTO{
-		Id:     id,
-		UserId: userId,
-		Value:  value,
-		Target: target,
-	}, nil
+	return dto, nil
+}
+
+func (a *actionTokenRepo) DeleteActionToken(ctx context.Context, id string) error {
+	query := `delete from action_tokens where id=$1;`
+	if _, err := a.db.ExecContext(ctx, query); err != nil {
+		return err
+	}
+	return nil
 }

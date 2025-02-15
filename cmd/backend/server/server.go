@@ -56,7 +56,7 @@ func New(opts NewServerOpts) *Server {
 		dummyGroup.GET("", handlers.NewDummyHandler())
 		dummyGroup.POST("/forgot-password", func(c *gin.Context) {
 			user := utils.GetUserFromRequest(c)
-			opts.UserService.ForgotPassword(c, user.Id)
+			opts.UserService.SendEmailForgotPassword(c, user.Id)
 		})
 	}
 
