@@ -1,5 +1,5 @@
 port: 8080
 postgres_url: "postgres://postgres:postgres@localhost:5432/postgres"
-jwt_signing_key: "./jwt_signing_key"
+jwt_signing_key: "./config_defaults/jwt_signing_key"
 kafka_url: "localhost:9092"
 kafka_topic: "backend_events"

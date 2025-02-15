@@ -1,8 +1,9 @@
-package middleware
+package httpserver
 
 import (
 	"backend/internal/integrations"
 	log "backend/pkg/logger"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,19 +39,22 @@ func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus 
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
 
+		ctxLogger := logger.WithContext(c)
+
+		msg := fmt.Sprintf("Request %s %s %d %v", method, path, statusCode, latency)
+
 		if statusCode >= 200 && statusCode < 400 {
+			// ctxLogger.Log().Msg(msg)
 			return
 		}
 
-		ctxLogger := logger.WithContext(c)
-
 		if statusCode >= 400 && statusCode < 500 {
 			prometheus.Add4xxError()
-			ctxLogger.Warning().Msgf("Request %s %s %d %v", method, path, statusCode, latency)
+			ctxLogger.Warning().Msg(msg)
 			return
 		}
 
 		prometheus.Add5xxError()
-		ctxLogger.Error().Msgf("Request %s %s %d %v", method, path, statusCode, latency)
+		ctxLogger.Error().Msg(msg)
 	}
 }
