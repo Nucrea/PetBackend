@@ -1,4 +1,4 @@
-package middleware
+package httpserver
 
 // Modified recovery from gin, use own logger
 

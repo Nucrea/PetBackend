@@ -186,7 +186,7 @@ func (a *App) Run(p RunParams) {
 		}()
 	}
 
-	srv := server.New(
+	srv := server.NewServer(
 		server.NewServerOpts{
 			DebugMode:        debugMode,
 			Logger:           logger,
