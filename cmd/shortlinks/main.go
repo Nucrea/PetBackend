@@ -6,7 +6,6 @@ import (
 	grpcserver "backend/internal/grpc_server"
 	"backend/internal/grpc_server/shortlinks"
 	httpserver "backend/internal/http_server"
-	"backend/internal/http_server/middleware"
 	"backend/internal/integrations"
 	"backend/pkg/cache"
 	"backend/pkg/logger"
@@ -94,22 +93,19 @@ func RunServer(ctx context.Context, log logger.Logger, tracer trace.Tracer, conf
 		ctx.Status(200)
 	})
 
-	r.Use(middleware.NewRecoveryMiddleware(log, prometheus, debugMode))
-	r.Use(middleware.NewRequestLogMiddleware(log, tracer, prometheus))
-	r.Use(middleware.NewTracingMiddleware(tracer))
+	r.Use(httpserver.NewRecoveryMiddleware(log, prometheus, debugMode))
+	r.Use(httpserver.NewRequestLogMiddleware(log, tracer, prometheus))
+	r.Use(httpserver.NewTracingMiddleware(tracer))
 
 	linkGroup := r.Group("/s")
 	linkGroup.POST("/new", NewShortlinkCreateHandler(log, shortlinkService, host))
 	linkGroup.GET("/:linkId", NewShortlinkResolveHandler(log, shortlinkService))
 
-	grpcObj := &ShortlinksGrpc{
-		log:              log,
-		host:             host,
-		shortlinkService: shortlinkService,
-	}
-
 	grpcUnderlying := grpc.NewServer()
-	shortlinks.RegisterShortlinksServer(grpcUnderlying, grpcObj)
+	shortlinks.RegisterShortlinksServer(
+		grpcUnderlying,
+		NewShortlinksGrpc(log, shortlinkService, host),
+	)
 
 	httpServer := httpserver.New(
 		httpserver.NewServerOpts{

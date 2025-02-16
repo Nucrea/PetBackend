@@ -15,7 +15,7 @@ func NewAuthMiddleware(userService services.UserService) gin.HandlerFunc {
 			return
 		}
 
-		user, err := userService.ValidateToken(ctx, token)
+		user, err := userService.ValidateAuthToken(ctx, token)
 		if err == services.ErrUserWrongToken || err == services.ErrUserNotExists {
 			ctx.AbortWithError(403, err)
 			return

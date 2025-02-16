@@ -5,8 +5,10 @@ import "time"
 type ActionTokenTarget int
 
 const (
-	ActionTokenTargetForgotPassword ActionTokenTarget = iota
+	_ ActionTokenTarget = iota
+	ActionTokenTargetForgotPassword
 	ActionTokenTargetLogin2FA
+	ActionTokenVerifyEmail
 )
 
 type ActionTokenDTO struct {

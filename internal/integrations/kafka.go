@@ -16,7 +16,7 @@ func NewKafka(addr, topic string) *Kafka {
 		Addr:                   kafka.TCP(addr),
 		Topic:                  topic,
 		Balancer:               &kafka.RoundRobin{},
-		AllowAutoTopicCreation: true,
+		AllowAutoTopicCreation: false,
 		BatchSize:              100,
 		BatchTimeout:           100 * time.Millisecond,
 	}

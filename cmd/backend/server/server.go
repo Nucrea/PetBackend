@@ -5,20 +5,13 @@ import (
 	"backend/cmd/backend/server/middleware"
 	"backend/cmd/backend/server/utils"
 	"backend/internal/core/services"
+	httpserver "backend/internal/http_server"
 	"backend/internal/integrations"
 	"backend/pkg/logger"
-	"context"
-	"fmt"
-	"net"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/trace"
 )
-
-type Server struct {
-	logger    logger.Logger
-	ginEngine *gin.Engine
-}
 
 type NewServerOpts struct {
 	DebugMode        bool
@@ -28,7 +21,7 @@ type NewServerOpts struct {
 	Tracer           trace.Tracer
 }
 
-func New(opts NewServerOpts) *Server {
+func NewServer(opts NewServerOpts) *httpserver.Server {
 	if !opts.DebugMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -36,53 +29,42 @@ func New(opts NewServerOpts) *Server {
 	r := gin.New()
 	r.ContextWithFallback = true // Use it to allow getting values from c.Request.Context()
 
-	r.Static("/webapp", "./webapp")
+	// r.Static("/webapp", "./webapp")
 	r.GET("/health", handlers.NewDummyHandler())
 
 	prometheus := integrations.NewPrometheus()
 	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
 
-	r.Use(middleware.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
-	r.Use(middleware.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
-	r.Use(middleware.NewTracingMiddleware(opts.Tracer))
+	r.Use(httpserver.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
+	r.Use(httpserver.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
+	r.Use(httpserver.NewTracingMiddleware(opts.Tracer))
 
-	userGroup := r.Group("/user")
-	userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
-	userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+	r.GET("/verify-user", handlers.NewUserVerifyEmailHandler(opts.Logger, opts.UserService))
 
-	dummyGroup := r.Group("/dummy")
+	api := r.Group("/api")
+
+	v1 := api.Group("/v1")
+	userGroup := v1.Group("/user")
 	{
-		dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
+		userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
+		userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+
+	}
+
+	dummyGroup := v1.Group("/dummy")
+	dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
+	{
 		dummyGroup.GET("", handlers.NewDummyHandler())
 		dummyGroup.POST("/forgot-password", func(c *gin.Context) {
 			user := utils.GetUserFromRequest(c)
-			opts.UserService.ForgotPassword(c, user.Id)
+			opts.UserService.SendEmailForgotPassword(c, user.Id)
 		})
 	}
 
-	return &Server{
-		logger:    opts.Logger,
-		ginEngine: r,
-	}
-}
-
-func (s *Server) Run(ctx context.Context, port uint16) {
-	listenAddr := fmt.Sprintf("0.0.0.0:%d", port)
-	s.logger.Log().Msgf("server listening on %s", listenAddr)
-
-	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", listenAddr)
-	if err != nil {
-		s.logger.Fatal().Err(err).Msg("can not create network listener")
-	}
-
-	go func() {
-		<-ctx.Done()
-		s.logger.Log().Msg("stopping tcp listener...")
-		listener.Close()
-	}()
-
-	err = s.ginEngine.RunListener(listener)
-	if err != nil && err == net.ErrClosed {
-		s.logger.Fatal().Err(err).Msg("server stopped with error")
-	}
+	return httpserver.New(
+		httpserver.NewServerOpts{
+			Logger:     opts.Logger,
+			HttpServer: r,
+		},
+	)
 }
