@@ -20,6 +20,7 @@ import (
 type UserRepo interface {
 	CreateUser(ctx context.Context, dto models.UserDTO) (*models.UserDTO, error)
 	UpdateUser(ctx context.Context, userId string, dto models.UserUpdateDTO) error
+	SetUserEmailVerified(ctx context.Context, userId string) error
 	GetUserById(ctx context.Context, id string) (*models.UserDTO, error)
 	GetUserByEmail(ctx context.Context, login string) (*models.UserDTO, error)
 }
@@ -66,15 +67,28 @@ func (u *userRepo) UpdateUser(ctx context.Context, userId string, dto models.Use
 	return nil
 }
 
+func (u *userRepo) SetUserEmailVerified(ctx context.Context, userId string) error {
+	_, span := u.tracer.Start(ctx, "postgres::SetUserEmailVerified")
+	defer span.End()
+
+	query := `update users set email_verified=true where id = $1;`
+	_, err := u.db.ExecContext(ctx, query, userId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO, error) {
 	_, span := u.tracer.Start(ctx, "postgres::GetUserById")
 	defer span.End()
 
-	query := `select id, email, secret, name from users where id = $1;`
+	query := `select id, email, secret, name, email_verified from users where id = $1;`
 	row := u.db.QueryRowContext(ctx, query, id)
 
 	dto := &models.UserDTO{}
-	err := row.Scan(&dto.Id, &dto.Email, &dto.Secret, &dto.Name)
+	err := row.Scan(&dto.Id, &dto.Email, &dto.Secret, &dto.Name, &dto.EmailVerified)
 	if err == nil {
 		return dto, nil
 	}
@@ -89,11 +103,11 @@ func (u *userRepo) GetUserByEmail(ctx context.Context, login string) (*models.Us
 	_, span := u.tracer.Start(ctx, "postgres::GetUserByEmail")
 	defer span.End()
 
-	query := `select id, email, secret, name from users where email = $1;`
+	query := `select id, email, secret, name, email_verified from users where email = $1;`
 	row := u.db.QueryRowContext(ctx, query, login)
 
 	dto := &models.UserDTO{}
-	err := row.Scan(&dto.Id, &dto.Email, &dto.Secret, &dto.Name)
+	err := row.Scan(&dto.Id, &dto.Email, &dto.Secret, &dto.Name, &dto.EmailVerified)
 	if err == nil {
 		return dto, nil
 	}
