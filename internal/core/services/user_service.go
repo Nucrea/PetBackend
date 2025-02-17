@@ -37,7 +37,7 @@ type UserService interface {
 	SendEmailVerifyEmail(ctx context.Context, email string) error
 
 	ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error
-	ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error
+	ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error
 }
 
 func NewUserService(deps UserServiceDeps) UserService {
@@ -141,7 +141,7 @@ func (u *userService) VerifyEmail(ctx context.Context, actionToken string) error
 	}
 
 	if err := u.deps.UserRepo.SetUserEmailVerified(ctx, token.UserId); err != nil {
-		return nil
+		return err
 	}
 
 	//TODO: log warnings somehow
@@ -205,18 +205,21 @@ func (u *userService) SendEmailVerifyEmail(ctx context.Context, email string) er
 	return u.sendEmailVerifyEmail(ctx, user.Id, user.Email)
 }
 
-func (u *userService) ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error {
-	user, err := u.getUserById(ctx, userId)
-	if err != nil {
-		return err
-	}
-
+func (u *userService) ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error {
 	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetForgotPassword)
 	if err != nil {
 		return err
 	}
 	if token == nil {
 		return fmt.Errorf("wrong action token")
+	}
+
+	user, err := u.getUserById(ctx, token.UserId)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return fmt.Errorf("no such user")
 	}
 
 	if err := u.updatePassword(ctx, *user, newPassword); err != nil {
