@@ -155,6 +155,7 @@ func (a *App) Run(p RunParams) {
 				JwtCache:        jwtCache,
 				EventRepo:       *eventRepo,
 				ActionTokenRepo: actionTokenRepo,
+				Logger:          logger,
 			},
 		)
 		shortlinkService = services.NewShortlinkSevice(

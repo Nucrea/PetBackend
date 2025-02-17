@@ -48,6 +48,7 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	{
 		userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
 		userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+		userGroup.POST("/send-verify", handlers.NewUserSendVerifyEmailHandler(opts.Logger, opts.UserService))
 
 	}
 

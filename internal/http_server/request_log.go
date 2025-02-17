@@ -44,7 +44,7 @@ func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus 
 		msg := fmt.Sprintf("Request %s %s %d %v", method, path, statusCode, latency)
 
 		if statusCode >= 200 && statusCode < 400 {
-			// ctxLogger.Log().Msg(msg)
+			ctxLogger.Log().Msg(msg)
 			return
 		}
 

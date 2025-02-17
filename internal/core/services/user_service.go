@@ -5,6 +5,7 @@ import (
 	"backend/internal/core/repos"
 	"backend/internal/core/utils"
 	"backend/pkg/cache"
+	"backend/pkg/logger"
 	"context"
 	"fmt"
 	"time"
@@ -33,7 +34,7 @@ type UserService interface {
 	VerifyEmail(ctx context.Context, actionToken string) error
 
 	SendEmailForgotPassword(ctx context.Context, userId string) error
-	SendEmailVerifyEmail(ctx context.Context, userId string) error
+	SendEmailVerifyEmail(ctx context.Context, email string) error
 
 	ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error
 	ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error
@@ -51,6 +52,7 @@ type UserServiceDeps struct {
 	JwtCache        cache.Cache[string, string]
 	EventRepo       repos.EventRepo
 	ActionTokenRepo repos.ActionTokenRepo
+	Logger          logger.Logger
 }
 
 type userService struct {
@@ -91,7 +93,10 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	if err != nil {
 		return nil, err
 	}
-	u.sendEmailVerifyEmail(ctx, result.Id, user.Email)
+
+	if err := u.sendEmailVerifyEmail(ctx, result.Id, user.Email); err != nil {
+		u.deps.Logger.Error().Err(err).Msg("error occured on sending email")
+	}
 
 	u.deps.UserCache.Set(result.Id, *result, cache.Expiration{Ttl: userCacheTtl})
 
@@ -189,6 +194,12 @@ func (u *userService) SendEmailVerifyEmail(ctx context.Context, email string) er
 	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return err
+	}
+	if user == nil {
+		return fmt.Errorf("no such user")
+	}
+	if user.EmailVerified {
+		return fmt.Errorf("user already verified")
 	}
 
 	return u.sendEmailVerifyEmail(ctx, user.Id, user.Email)

@@ -31,10 +31,9 @@ func NewUserCreateHandler(log logger.Logger, userService services.UserService) g
 					Name:     input.Name,
 				},
 			)
-
-			out := createUserOutput{}
+			
 			if err != nil {
-				return out, err
+				return createUserOutput{}, err
 			}
 
 			return createUserOutput{

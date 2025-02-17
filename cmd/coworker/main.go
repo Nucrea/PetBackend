@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"os"
@@ -21,19 +22,21 @@ const MSG_TEXT = `
 	</head>
 	<body>
 		<p>This message was sent because you forgot a password</p>
-		<p>To change a password, use <a href="{{Link}}"/>this</a> link</p>
+		<p>To change a password, use <a href="{{.Link}}">this</a>link</p>
 	</body>
 </html>
 `
 
-func SendEmailForgotPassword(dialer *gomail.Dialer, from, to, link string) error {
-	msgText := strings.ReplaceAll(MSG_TEXT, "{{Link}}", link)
+type HtmlTemplate struct {
+	Link string
+}
 
+func SendEmailForgotPassword(dialer *gomail.Dialer, from, to, body string) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", m.FormatAddress(from, "Pet Backend"))
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", "Hello!")
-	m.SetBody("text/html", msgText)
+	m.SetBody("text/html", body)
 
 	return dialer.DialAndSend(m)
 }
@@ -53,8 +56,9 @@ type Config struct {
 	SMTP struct {
 		Server   string `yaml:"server"`
 		Port     int    `yaml:"port"`
-		Email    string `yaml:"email"`
+		Login    string `yaml:"login"`
 		Password string `yaml:"password"`
+		Email    string `yaml:"email"`
 	} `yaml:"smtp"`
 }
 
@@ -71,7 +75,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	dialer := gomail.NewDialer(config.SMTP.Server, config.SMTP.Port, config.SMTP.Email, config.SMTP.Password)
+	dialer := gomail.NewDialer(config.SMTP.Server, config.SMTP.Port, config.SMTP.Login, config.SMTP.Password)
 
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: config.Kafka.Brokers,
@@ -91,6 +95,11 @@ func main() {
 	}
 
 	logger.Printf("coworker service started\n")
+
+	template, err := template.New("verify-email").Parse(MSG_TEXT)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for {
 		msg, err := r.FetchMessage(ctx)
@@ -120,10 +129,16 @@ func main() {
 			continue
 		}
 
-		link := fmt.Sprintf("%s/restore-password?token=%s", config.App.ServiceUrl, value.Token)
+		link := fmt.Sprintf("%s/verify-user?token=%s", config.App.ServiceUrl, value.Token)
 
-		if err := SendEmailForgotPassword(dialer, config.SMTP.Email, value.Email, link); err != nil {
-			log.Fatalf("failed to send email: %s\n", err.Error())
+		builder := &strings.Builder{}
+		if err := template.Execute(builder, HtmlTemplate{link}); err != nil {
+			log.Printf("failed to execute html template: %s\n", err.Error())
+			continue
+		}
+
+		if err := SendEmailForgotPassword(dialer, config.SMTP.Email, value.Email, builder.String()); err != nil {
+			log.Printf("failed to send email: %s\n", err.Error())
 			continue
 		}
 	}
