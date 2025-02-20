@@ -129,19 +129,17 @@ func (a *App) Run(p RunParams) {
 
 		// Periodically trigger cache cleanup
 		go func() {
-			tmr := time.NewTicker(5 * time.Minute)
+			tmr := time.NewTicker(15 * time.Minute)
 			defer tmr.Stop()
-
-			batchSize := 100
 
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-tmr.C:
-					userCache.CheckExpired(batchSize)
-					jwtCache.CheckExpired(batchSize)
-					linksCache.CheckExpired(batchSize)
+					userCache.CheckExpired()
+					jwtCache.CheckExpired()
+					linksCache.CheckExpired()
 				}
 			}
 		}()

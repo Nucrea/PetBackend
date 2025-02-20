@@ -7,5 +7,5 @@ type Cache[K comparable, V any] interface {
 	Set(key K, value V, exp Expiration)
 
 	Del(key K)
-	CheckExpired(batchSize int)
+	CheckExpired()
 }
