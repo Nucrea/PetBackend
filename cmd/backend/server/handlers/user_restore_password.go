@@ -10,8 +10,8 @@ import (
 )
 
 type inputRestorePassword struct {
-	Token       string `json:"token"`
-	NewPassword string `json:"password"`
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"password" binding:"required"`
 }
 
 func NewUserRestorePasswordHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {

@@ -29,7 +29,7 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	r.ContextWithFallback = true // Use it to allow getting values from c.Request.Context()
 
 	// r.Static("/webapp", "./webapp")
-	r.GET("/health", handlers.NewDummyHandler())
+	r.GET("/health", handlers.New200OkHandler())
 
 	prometheus := integrations.NewPrometheus()
 	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))

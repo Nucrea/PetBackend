@@ -10,8 +10,8 @@ import (
 )
 
 type loginUserInput struct {
-	Login    string `json:"email" validate:"required,email"`
-	Password string `json:"password"`
+	Login    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }
 
 type loginUserOutput struct {

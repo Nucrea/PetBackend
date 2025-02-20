@@ -10,7 +10,7 @@ import (
 )
 
 type inputSendVerify struct {
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 func NewUserSendVerifyEmailHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {

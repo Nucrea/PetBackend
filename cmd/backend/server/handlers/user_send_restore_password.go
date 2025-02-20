@@ -10,7 +10,7 @@ import (
 )
 
 type inputSendRestorePassword struct {
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 func NewUserSendRestorePasswordHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {

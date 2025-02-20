@@ -12,8 +12,8 @@ import (
 )
 
 type inputChangePassword struct {
-	OldPassword string `json:"oldPassword"`
-	NewPassword string `json:"newPassword"`
+	OldPassword string `json:"oldPassword" binding:"required"`
+	NewPassword string `json:"newPassword" binding:"required"`
 }
 
 func NewUserChangePasswordHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {
