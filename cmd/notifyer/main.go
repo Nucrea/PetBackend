@@ -43,7 +43,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	logger.Printf("coworker service started\n")
+	logger.Printf("notifyer service started\n")
 
 	for {
 		msg, err := r.FetchMessage(ctx)

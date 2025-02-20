@@ -4,10 +4,10 @@ kafka:
   brokers:
    - localhost:9091
   topic: events
-  consumerGroupId: AAAA
+  consumerGroupId: notifyer-group
 smtp:
   server: localhost
   port: 12333
   login: "maillogin"
   password: "mailpass"
-  email: "coworker@example.com"
+  email: "notifyer@example.com"
