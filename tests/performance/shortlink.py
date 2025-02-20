@@ -7,5 +7,5 @@ class ShortlinkCreate(FastHttpUser):
         self.api = BackendApi(self.client)
 
     @task
-    def user_create_test(self):
+    def shortlink_create_test(self):
         self.api.shortlink_create("https://example.com")
