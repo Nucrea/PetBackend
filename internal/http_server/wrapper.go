@@ -12,7 +12,7 @@ type Handler[Input, Output interface{}] func(ctx context.Context, input Input) (
 
 type ResponseOk struct {
 	Status string      `json:"status"`
-	Result interface{} `json:"result"`
+	Result interface{} `json:"result,omitempty"`
 }
 
 type ResponseError struct {

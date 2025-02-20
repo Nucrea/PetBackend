@@ -78,7 +78,7 @@ func (c *cacheInmem[K, V]) Del(key K) {
 	delete(c.data, key)
 }
 
-func (c *cacheInmem[K, V]) CheckExpired(batchSize int) {
+func (c *cacheInmem[K, V]) CheckExpired() {
 	if len(c.data) == 0 {
 		return
 	}
@@ -89,11 +89,6 @@ func (c *cacheInmem[K, V]) CheckExpired(batchSize int) {
 	for key, item := range c.data {
 		if time.Now().After(item.Expiration) {
 			delete(c.data, key)
-		}
-
-		batchSize--
-		if batchSize <= 0 {
-			return
 		}
 	}
 }

@@ -11,7 +11,6 @@ class Requests():
 
 class Auth():
     token: string
-
     def __init__(self, token):
         self.token = token
 
@@ -21,21 +20,30 @@ class User():
     name: string
     password: string
 
-    def __init__(self, email, password, name, id="", token = ""):
+    def __init__(self, email, password, name, id=""):
+        self.id = id
         self.email = email
         self.password = password
         self.name = name
-        self.token = token
 
+    @classmethod
+    def random(cls):
+        email = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10)) + '@example.com'
+        name = ''.join(random.choices(string.ascii_letters, k=10))
+        password = 'Abcdef1!!1'
+        return cls(email, password, name)
+
+def rand_email():
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=10)) + '@example.com'
 
 class BackendApi():
     def __init__(self, httpClient):
         self.httpClient = httpClient
 
     def parse_response(self, response):
-        if response.status != 200:
-            raise AssertionError('something wrong')
-        
+        if response.status_code != 200:
+            raise AssertionError('Request error')
+            
         json = response.json()
         if json['status'] == 'success':
             if 'result' in json:
@@ -45,35 +53,27 @@ class BackendApi():
         error = json['error']
         raise AssertionError(error['id'], error['message'])
 
-    def user_create(self, user: User | None) -> User:
-        if user == None:
-            email = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10)) + '@test.test'
-            name = ''.join(random.choices(string.ascii_letters, k=10))
-            password = 'Abcdef1!!1'
-            user = User(email, password, name)
-    
+    def user_create(self, user: User) -> User:
         res = self.parse_response(
             self.httpClient.post(
-                "/v1/user/create", json={
+                "/api/v1/user/create", json={
                     "email": user.email,
                     "password": user.password,
                     "name": user.name,
                 }
             )
         )
-
-        return User(res['email'], res['password'], res['name'], res['id'])
+        return User(res['email'], user.password, res['name'], id=res['id'])
         
-    def user_login(self, user: User) -> Auth:        
+    def user_login(self, email, password) -> Auth:        
         res = self.parse_response(
             self.httpClient.post(
-                "/v1/user/login", json={
-                    "email": user.email+"a",
-                    "password": user.password,
+                "/api/v1/user/login", json={
+                    "email": email,
+                    "password": password,
                 },
             )
         )
-        
         return Auth(res['status'])        
 
     def dummy_get(self, auth: Auth):

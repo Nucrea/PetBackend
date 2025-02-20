@@ -5,6 +5,7 @@ import (
 	"backend/internal/core/repos"
 	"backend/internal/core/utils"
 	"backend/pkg/cache"
+	"backend/pkg/logger"
 	"context"
 	"fmt"
 	"time"
@@ -33,10 +34,10 @@ type UserService interface {
 	VerifyEmail(ctx context.Context, actionToken string) error
 
 	SendEmailForgotPassword(ctx context.Context, userId string) error
-	SendEmailVerifyEmail(ctx context.Context, userId string) error
+	SendEmailVerifyUser(ctx context.Context, email string) error
 
 	ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error
-	ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error
+	ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error
 }
 
 func NewUserService(deps UserServiceDeps) UserService {
@@ -51,6 +52,7 @@ type UserServiceDeps struct {
 	JwtCache        cache.Cache[string, string]
 	EventRepo       repos.EventRepo
 	ActionTokenRepo repos.ActionTokenRepo
+	Logger          logger.Logger
 }
 
 type userService struct {
@@ -91,7 +93,10 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	if err != nil {
 		return nil, err
 	}
-	u.sendEmailVerifyEmail(ctx, result.Id, user.Email)
+
+	if err := u.sendEmailVerifyUser(ctx, result.Id, user.Email); err != nil {
+		u.deps.Logger.Error().Err(err).Msg("error occured on sending email")
+	}
 
 	u.deps.UserCache.Set(result.Id, *result, cache.Expiration{Ttl: userCacheTtl})
 
@@ -136,7 +141,7 @@ func (u *userService) VerifyEmail(ctx context.Context, actionToken string) error
 	}
 
 	if err := u.deps.UserRepo.SetUserEmailVerified(ctx, token.UserId); err != nil {
-		return nil
+		return err
 	}
 
 	//TODO: log warnings somehow
@@ -157,7 +162,7 @@ func (u *userService) SendEmailForgotPassword(ctx context.Context, email string)
 			UserId:     user.Id,
 			Value:      uuid.New().String(),
 			Target:     models.ActionTokenTargetForgotPassword,
-			Expiration: time.Now().Add(1 * time.Hour),
+			Expiration: time.Now().Add(15 * time.Minute),
 		},
 	)
 	if err != nil {
@@ -167,7 +172,7 @@ func (u *userService) SendEmailForgotPassword(ctx context.Context, email string)
 	return u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, actionToken.Value)
 }
 
-func (u *userService) sendEmailVerifyEmail(ctx context.Context, userId, email string) error {
+func (u *userService) sendEmailVerifyUser(ctx context.Context, userId, email string) error {
 	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(
 		ctx,
 		models.ActionTokenDTO{
@@ -181,31 +186,40 @@ func (u *userService) sendEmailVerifyEmail(ctx context.Context, userId, email st
 		return err
 	}
 
-	return u.deps.EventRepo.SendEmailVerifyEmail(ctx, email, actionToken.Value)
+	return u.deps.EventRepo.SendEmailVerifyUser(ctx, email, actionToken.Value)
 }
 
-func (u *userService) SendEmailVerifyEmail(ctx context.Context, email string) error {
+func (u *userService) SendEmailVerifyUser(ctx context.Context, email string) error {
 	//user, err := u.getUserById(ctx, userId)
 	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
-
-	return u.sendEmailVerifyEmail(ctx, user.Id, user.Email)
-}
-
-func (u *userService) ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error {
-	user, err := u.getUserById(ctx, userId)
-	if err != nil {
-		return err
+	if user == nil {
+		return fmt.Errorf("no such user")
+	}
+	if user.EmailVerified {
+		return fmt.Errorf("user already verified")
 	}
 
+	return u.sendEmailVerifyUser(ctx, user.Id, user.Email)
+}
+
+func (u *userService) ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error {
 	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetForgotPassword)
 	if err != nil {
 		return err
 	}
 	if token == nil {
 		return fmt.Errorf("wrong action token")
+	}
+
+	user, err := u.getUserById(ctx, token.UserId)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return fmt.Errorf("no such user")
 	}
 
 	if err := u.updatePassword(ctx, *user, newPassword); err != nil {
@@ -242,10 +256,18 @@ func (u *userService) updatePassword(ctx context.Context, user models.UserDTO, n
 		return err
 	}
 
-	return u.deps.UserRepo.UpdateUser(ctx, user.Id, models.UserUpdateDTO{
+	if err = u.deps.UserRepo.UpdateUser(ctx, user.Id, models.UserUpdateDTO{
 		Secret: newSecret,
 		Name:   user.Name,
-	})
+	}); err != nil {
+		return err
+	}
+
+	if err := u.deps.EventRepo.SendEmailPasswordChanged(ctx, user.Email); err != nil {
+		u.deps.Logger.Error().Err(err).Msg("error occured on sending email")
+	}
+
+	return nil
 }
 
 func (u *userService) getUserById(ctx context.Context, userId string) (*models.UserDTO, error) {

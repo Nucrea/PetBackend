@@ -10,9 +10,9 @@ import (
 )
 
 type createUserInput struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
-	Name     string `json:"name" validate:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	Name     string `json:"name" binding:"required"`
 }
 
 type createUserOutput struct {
@@ -32,9 +32,8 @@ func NewUserCreateHandler(log logger.Logger, userService services.UserService) g
 				},
 			)
 
-			out := createUserOutput{}
 			if err != nil {
-				return out, err
+				return createUserOutput{}, err
 			}
 
 			return createUserOutput{

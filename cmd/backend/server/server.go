@@ -3,7 +3,6 @@ package server
 import (
 	"backend/cmd/backend/server/handlers"
 	"backend/cmd/backend/server/middleware"
-	"backend/cmd/backend/server/utils"
 	"backend/internal/core/services"
 	httpserver "backend/internal/http_server"
 	"backend/internal/integrations"
@@ -30,7 +29,7 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	r.ContextWithFallback = true // Use it to allow getting values from c.Request.Context()
 
 	// r.Static("/webapp", "./webapp")
-	r.GET("/health", handlers.NewDummyHandler())
+	r.GET("/health", handlers.New200OkHandler())
 
 	prometheus := integrations.NewPrometheus()
 	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
@@ -48,17 +47,12 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	{
 		userGroup.POST("/create", handlers.NewUserCreateHandler(opts.Logger, opts.UserService))
 		userGroup.POST("/login", handlers.NewUserLoginHandler(opts.Logger, opts.UserService))
+		userGroup.POST("/send-verify", handlers.NewUserSendVerifyEmailHandler(opts.Logger, opts.UserService))
+		userGroup.POST("/send-restore-password", handlers.NewUserSendRestorePasswordHandler(opts.Logger, opts.UserService))
+		userGroup.POST("/restore-password", handlers.NewUserRestorePasswordHandler(opts.Logger, opts.UserService))
 
-	}
-
-	dummyGroup := v1.Group("/dummy")
-	dummyGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
-	{
-		dummyGroup.GET("", handlers.NewDummyHandler())
-		dummyGroup.POST("/forgot-password", func(c *gin.Context) {
-			user := utils.GetUserFromRequest(c)
-			opts.UserService.SendEmailForgotPassword(c, user.Id)
-		})
+		userGroup.Use(middleware.NewAuthMiddleware(opts.UserService))
+		userGroup.POST("/change-password", handlers.NewUserChangePasswordHandler(opts.Logger, opts.UserService))
 	}
 
 	return httpserver.New(
