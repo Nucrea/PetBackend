@@ -91,7 +91,9 @@ func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO,
 	_, span := u.tracer.Start(ctx, "postgres::GetUserById")
 	defer span.End()
 
-	query := `select id, email, secret, full_name, email_verified from users where id = $1;`
+	query := `
+	select id, email, secret, full_name, email_verified 
+		from users where id = $1 and activated;`
 	row := u.db.QueryRowContext(ctx, query, id)
 
 	dto := &models.UserDTO{}
@@ -110,7 +112,8 @@ func (u *userRepo) GetUserByEmail(ctx context.Context, login string) (*models.Us
 	_, span := u.tracer.Start(ctx, "postgres::GetUserByEmail")
 	defer span.End()
 
-	query := `select id, email, secret, full_name, email_verified from users where email = $1;`
+	query := `select id, email, secret, full_name, email_verified 
+		from users where email = $1 and activated;`
 	row := u.db.QueryRowContext(ctx, query, login)
 
 	dto := &models.UserDTO{}

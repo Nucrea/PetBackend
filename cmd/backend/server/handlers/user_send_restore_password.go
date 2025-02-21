@@ -16,7 +16,7 @@ type inputSendRestorePassword struct {
 func NewUserSendRestorePasswordHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {
 	return httpserver.WrapGin(log,
 		func(ctx context.Context, input inputSendRestorePassword) (interface{}, error) {
-			err := userService.SendEmailForgotPassword(ctx, input.Email)
+			err := userService.RequestRestorePassword(ctx, input.Email)
 			return nil, err
 		},
 	)

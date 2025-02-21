@@ -16,7 +16,7 @@ type inputSendVerify struct {
 func NewUserSendVerifyEmailHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {
 	return httpserver.WrapGin(log,
 		func(ctx context.Context, input inputSendVerify) (interface{}, error) {
-			err := userService.SendEmailVerifyUser(ctx, input.Email)
+			err := userService.RequestVerifyUser(ctx, input.Email)
 			return nil, err
 		},
 	)
