@@ -48,9 +48,9 @@ func (s *shortlinkService) CreateShortlink(ctx context.Context, url string) (str
 	expiration := time.Now().Add(7 * 24 * time.Hour)
 
 	dto := repos.ShortlinkDTO{
-		Id:         id,
-		Url:        url,
-		Expiration: expiration,
+		Id:        id,
+		Url:       url,
+		ExpiresAt: expiration,
 	}
 	if err := s.repo.AddShortlink(ctx, dto); err != nil {
 		return "", err
@@ -73,7 +73,7 @@ func (s *shortlinkService) GetShortlink(ctx context.Context, id string) (string,
 	if link == nil {
 		return "", ErrShortlinkNotexist
 	}
-	if time.Now().After(link.Expiration) {
+	if time.Now().After(link.ExpiresAt) {
 		return "", ErrShortlinkExpired
 	}
 

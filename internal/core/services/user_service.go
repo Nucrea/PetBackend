@@ -133,7 +133,7 @@ func (u *userService) AuthenticateUser(ctx context.Context, email, password stri
 }
 
 func (u *userService) VerifyEmail(ctx context.Context, actionToken string) error {
-	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenVerifyEmail)
+	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetVerifyEmail)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (u *userService) SendEmailForgotPassword(ctx context.Context, email string)
 		models.ActionTokenDTO{
 			UserId:     user.Id,
 			Value:      uuid.New().String(),
-			Target:     models.ActionTokenTargetForgotPassword,
+			Target:     models.ActionTokenTargetRestorePassword,
 			Expiration: time.Now().Add(15 * time.Minute),
 		},
 	)
@@ -179,7 +179,7 @@ func (u *userService) sendEmailVerifyUser(ctx context.Context, userId, email str
 		models.ActionTokenDTO{
 			UserId:     userId,
 			Value:      uuid.New().String(),
-			Target:     models.ActionTokenVerifyEmail,
+			Target:     models.ActionTokenTargetVerifyEmail,
 			Expiration: time.Now().Add(1 * time.Hour),
 		},
 	)
@@ -207,7 +207,7 @@ func (u *userService) SendEmailVerifyUser(ctx context.Context, email string) err
 }
 
 func (u *userService) ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error {
-	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetForgotPassword)
+	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetRestorePassword)
 	if err != nil {
 		return err
 	}

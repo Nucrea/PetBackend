@@ -11,9 +11,9 @@ import (
 )
 
 type ShortlinkDTO struct {
-	Id         string
-	Url        string
-	Expiration time.Time
+	Id        string
+	Url       string
+	ExpiresAt time.Time
 }
 
 type ShortlinkRepo interface {
@@ -35,8 +35,8 @@ func (u *shortlinkRepo) AddShortlink(ctx context.Context, dto ShortlinkDTO) erro
 	_, span := u.tracer.Start(ctx, "postgres::AddShortlink")
 	defer span.End()
 
-	query := `insert into shortlinks (id, url, expiration) values ($1, $2, $3);`
-	_, err := u.db.ExecContext(ctx, query, dto.Id, dto.Url, dto.Expiration)
+	query := `insert into shortlinks (url, expires_at) values ($1, $2);`
+	_, err := u.db.ExecContext(ctx, query, dto.Url, dto.ExpiresAt)
 	return err
 }
 
@@ -44,14 +44,14 @@ func (u *shortlinkRepo) GetShortlink(ctx context.Context, id string) (*Shortlink
 	_, span := u.tracer.Start(ctx, "postgres::GetShortlink")
 	defer span.End()
 
-	query := `select url, expiration from shortlinks where id = $1;`
+	query := `select url, expires_at from shortlinks where id = $1;`
 	row := u.db.QueryRowContext(ctx, query, id)
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
 
 	dto := &ShortlinkDTO{Id: id}
-	err := row.Scan(&dto.Url, &dto.Expiration)
+	err := row.Scan(&dto.Url, &dto.ExpiresAt)
 	if err == nil {
 		return dto, nil
 	}

@@ -10,16 +10,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// type userDAO struct {
-// 	Id     string `json:"id"`
-// 	Login  string `json:"login"`
-// 	Secret string `json:"secret"`
-// 	Name   string `json:"name"`
-// }
-
 type UserRepo interface {
 	CreateUser(ctx context.Context, dto models.UserDTO) (*models.UserDTO, error)
 	UpdateUser(ctx context.Context, userId string, dto models.UserUpdateDTO) error
+	DeactivateUser(ctx context.Context, userId string) error
 	SetUserEmailVerified(ctx context.Context, userId string) error
 	GetUserById(ctx context.Context, id string) (*models.UserDTO, error)
 	GetUserByEmail(ctx context.Context, login string) (*models.UserDTO, error)
@@ -60,6 +54,19 @@ func (u *userRepo) UpdateUser(ctx context.Context, userId string, dto models.Use
 
 	query := `update users set secret=$1, full_name=$2 where id = $3;`
 	_, err := u.db.ExecContext(ctx, query, dto.Secret, dto.FullName, userId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *userRepo) DeactivateUser(ctx context.Context, userId string) error {
+	_, span := u.tracer.Start(ctx, "postgres::DeactivateUser")
+	defer span.End()
+
+	query := `update users set active=false where id = $1;`
+	_, err := u.db.ExecContext(ctx, query, userId)
 	if err != nil {
 		return err
 	}

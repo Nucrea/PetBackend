@@ -4,38 +4,20 @@ create table if not exists users (
     secret varchar(256) not null,
     full_name varchar(256) not null,
     email_verified boolean not null default false,
+    active boolean,
     created_at timestamp,
     updated_at timestamp
 );
 
 create index if not exists idx_users_email on users(email);
 
-create or replace function set_created_at()
-returns trigger as $$
-begin
-    new.created_at = now();
-	new.updated_at = now();
-    return new;
-end;
-$$ language plpgsql;
-
 create or replace trigger trg_user_created
     before insert on users
     for each row
-    execute function set_created_at();
-
-create or replace function set_updated_at()
-returns trigger as $$
-begin
-    if new is distinct from old then
-        new.updated_at = now();
-    end if;
-    return new; 
-end;
-$$ language plpgsql;
+    execute function trg_proc_row_created();
 
 create or replace trigger trg_user_updated
     before update on users
     for each row
     when(new is distinct from old)
-    execute function set_updated_at();
+    execute function trg_proc_row_updated();
