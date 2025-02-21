@@ -84,9 +84,9 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	}
 
 	user := models.UserDTO{
-		Email:  params.Email,
-		Secret: string(secret),
-		Name:   params.Name,
+		Email:    params.Email,
+		Secret:   string(secret),
+		FullName: params.Name,
 	}
 
 	result, err := u.deps.UserRepo.CreateUser(ctx, user)
@@ -257,8 +257,8 @@ func (u *userService) updatePassword(ctx context.Context, user models.UserDTO, n
 	}
 
 	if err = u.deps.UserRepo.UpdateUser(ctx, user.Id, models.UserUpdateDTO{
-		Secret: newSecret,
-		Name:   user.Name,
+		Secret:   newSecret,
+		FullName: user.FullName,
 	}); err != nil {
 		return err
 	}

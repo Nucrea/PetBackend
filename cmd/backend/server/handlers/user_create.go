@@ -16,9 +16,9 @@ type createUserInput struct {
 }
 
 type createUserOutput struct {
-	Id    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	Id       string `json:"id"`
+	Email    string `json:"email"`
+	FullName string `json:"fullName"`
 }
 
 func NewUserCreateHandler(log logger.Logger, userService services.UserService) gin.HandlerFunc {
@@ -37,9 +37,9 @@ func NewUserCreateHandler(log logger.Logger, userService services.UserService) g
 			}
 
 			return createUserOutput{
-				Id:    user.Id,
-				Email: user.Email,
-				Name:  user.Name,
+				Id:       user.Id,
+				Email:    user.Email,
+				FullName: user.FullName,
 			}, nil
 		},
 	)
