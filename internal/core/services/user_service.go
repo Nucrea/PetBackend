@@ -8,6 +8,7 @@ import (
 	"backend/pkg/logger"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,7 +85,7 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	}
 
 	user := models.UserDTO{
-		Email:    params.Email,
+		Email:    strings.ToLower(params.Email),
 		Secret:   string(secret),
 		FullName: params.Name,
 	}
