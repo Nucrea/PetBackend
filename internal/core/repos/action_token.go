@@ -26,7 +26,7 @@ type actionTokenRepo struct {
 func (a *actionTokenRepo) CreateActionToken(ctx context.Context, dto models.ActionTokenDTO) (*models.ActionTokenDTO, error) {
 	query := `
 	insert into 
-		action_tokens (user_id, value, target, expiration) 
+		action_tokens (user_id, value, target, expires_at) 
 		values ($1, $2, $3, $4) 
 		returning id;`
 	row := a.db.QueryRowContext(ctx, query, dto.UserId, dto.Value, dto.Target, dto.Expiration)
@@ -51,7 +51,7 @@ func (a *actionTokenRepo) GetActionToken(ctx context.Context, value string, targ
 	select id, user_id from action_tokens 
 	where 
 		value=$1 and target=$2
-		and CURRENT_TIMESTAMP < expiration;`
+		and CURRENT_TIMESTAMP < expires_at;`
 	row := a.db.QueryRowContext(ctx, query, value, target)
 
 	err := row.Scan(&dto.Id, &dto.UserId)

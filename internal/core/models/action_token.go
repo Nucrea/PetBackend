@@ -2,13 +2,11 @@ package models
 
 import "time"
 
-type ActionTokenTarget int
+type ActionTokenTarget string
 
 const (
-	_ ActionTokenTarget = iota
-	ActionTokenTargetForgotPassword
-	ActionTokenTargetLogin2FA
-	ActionTokenVerifyEmail
+	ActionTokenTargetRestorePassword ActionTokenTarget = "restore"
+	ActionTokenTargetVerifyEmail     ActionTokenTarget = "verify"
 )
 
 type ActionTokenDTO struct {

@@ -5,10 +5,10 @@ type UserDTO struct {
 	Email         string
 	EmailVerified bool
 	Secret        string
-	Name          string
+	FullName      string
 }
 
 type UserUpdateDTO struct {
-	Secret string
-	Name   string
+	Secret   string
+	FullName string
 }
