@@ -93,7 +93,7 @@ func (u *userRepo) GetUserById(ctx context.Context, id string) (*models.UserDTO,
 
 	query := `
 	select id, email, secret, full_name, email_verified 
-		from users where id = $1 and activated;`
+		from users where id = $1 and active;`
 	row := u.db.QueryRowContext(ctx, query, id)
 
 	dto := &models.UserDTO{}
@@ -113,7 +113,7 @@ func (u *userRepo) GetUserByEmail(ctx context.Context, login string) (*models.Us
 	defer span.End()
 
 	query := `select id, email, secret, full_name, email_verified 
-		from users where email = $1 and activated;`
+		from users where email = $1 and active;`
 	row := u.db.QueryRowContext(ctx, query, login)
 
 	dto := &models.UserDTO{}

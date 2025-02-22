@@ -122,9 +122,10 @@ func (a *App) Run(p RunParams) {
 			shortlinkRepo   = repos.NewShortlinkRepo(sqlDb, tracer)
 			eventRepo       = repos.NewEventRepo(kafka)
 
-			userCache  = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
-			jwtCache   = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
-			linksCache = cache.NewCacheInmem[string, string]()
+			userCache          = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
+			loginAttemptsCache = cache.NewCacheInmem[string, int]()
+			jwtCache           = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
+			linksCache         = cache.NewCacheInmem[string, string]()
 		)
 
 		// Periodically trigger cache cleanup
@@ -140,20 +141,22 @@ func (a *App) Run(p RunParams) {
 					userCache.CheckExpired()
 					jwtCache.CheckExpired()
 					linksCache.CheckExpired()
+					loginAttemptsCache.CheckExpired()
 				}
 			}
 		}()
 
 		userService = services.NewUserService(
 			services.UserServiceDeps{
-				Jwt:             jwtUtil,
-				Password:        passwordUtil,
-				UserRepo:        userRepo,
-				UserCache:       userCache,
-				JwtCache:        jwtCache,
-				EventRepo:       *eventRepo,
-				ActionTokenRepo: actionTokenRepo,
-				Logger:          logger,
+				Jwt:                jwtUtil,
+				Password:           passwordUtil,
+				UserRepo:           userRepo,
+				UserCache:          userCache,
+				LoginAttemptsCache: loginAttemptsCache,
+				JwtCache:           jwtCache,
+				EventRepo:          *eventRepo,
+				ActionTokenRepo:    actionTokenRepo,
+				Logger:             logger,
 			},
 		)
 		shortlinkService = services.NewShortlinkSevice(

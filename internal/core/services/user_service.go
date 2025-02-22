@@ -49,14 +49,15 @@ func NewUserService(deps UserServiceDeps) UserService {
 }
 
 type UserServiceDeps struct {
-	Jwt             utils.JwtUtil
-	Password        utils.PasswordUtil
-	UserRepo        repos.UserRepo
-	UserCache       cache.Cache[string, models.UserDTO]
-	JwtCache        cache.Cache[string, string]
-	EventRepo       repos.EventRepo
-	ActionTokenRepo repos.ActionTokenRepo
-	Logger          logger.Logger
+	Jwt                utils.JwtUtil
+	Password           utils.PasswordUtil
+	UserRepo           repos.UserRepo
+	UserCache          cache.Cache[string, models.UserDTO]
+	JwtCache           cache.Cache[string, string]
+	LoginAttemptsCache cache.Cache[string, int]
+	EventRepo          repos.EventRepo
+	ActionTokenRepo    repos.ActionTokenRepo
+	Logger             logger.Logger
 }
 
 type userService struct {
@@ -108,6 +109,22 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 }
 
 func (u *userService) AuthenticateUser(ctx context.Context, email, password string) (string, error) {
+	attempts, ok := u.deps.LoginAttemptsCache.Get(email)
+	if ok && attempts >= 4 {
+		return "", fmt.Errorf("too many bad login attempts")
+	}
+
+	token, err := u.authenticateUser(ctx, email, password)
+	if err != nil {
+		u.deps.LoginAttemptsCache.Set(email, attempts+1, cache.Expiration{Ttl: 30 * time.Second})
+		return "", err
+	}
+
+	u.deps.LoginAttemptsCache.Del(email)
+	return token, nil
+}
+
+func (u *userService) authenticateUser(ctx context.Context, email, password string) (string, error) {
 	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return "", err

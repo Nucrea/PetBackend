@@ -4,10 +4,12 @@ create table if not exists users (
     secret varchar(256) not null,
     full_name varchar(256) not null,
     email_verified boolean not null default false,
-    active boolean,
+    active boolean default true,
     created_at timestamp,
     updated_at timestamp
 );
+
+alter table users alter column active set default true;
 
 create index if not exists idx_users_email on users(email);
 
