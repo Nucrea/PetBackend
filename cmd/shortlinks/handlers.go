@@ -19,10 +19,10 @@ type shortlinkCreateOutput struct {
 	Link string `json:"link"`
 }
 
-func NewCreateHandler(
+func NewShortlinkCreateHandler(
 	log logger.Logger,
 	shortlinkService services.ShortlinkService,
-	host string,
+	serviceUrl string,
 ) httpserver.Handler[shortlinkCreateInput, shortlinkCreateOutput] {
 	return func(ctx context.Context, input shortlinkCreateInput) (shortlinkCreateOutput, error) {
 		output := shortlinkCreateOutput{}
@@ -39,13 +39,17 @@ func NewCreateHandler(
 		}
 
 		return shortlinkCreateOutput{
-			Link: fmt.Sprintf("%s/s/%s", host, linkId),
+			Link: fmt.Sprintf("%s/s/%s", serviceUrl, linkId),
 		}, nil
 	}
 }
 
-func NewShortlinkCreateHandler(log logger.Logger, shortlinkService services.ShortlinkService, host string) gin.HandlerFunc {
-	return httpserver.WrapGin(log, NewCreateHandler(log, shortlinkService, host))
+func NewShortlinkCreateGinHandler(
+	log logger.Logger,
+	shortlinkService services.ShortlinkService,
+	serviceUrl string,
+) gin.HandlerFunc {
+	return httpserver.WrapGin(log, NewShortlinkCreateHandler(log, shortlinkService, serviceUrl))
 }
 
 func NewShortlinkResolveHandler(logger logger.Logger, shortlinkService services.ShortlinkService) gin.HandlerFunc {

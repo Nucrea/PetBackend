@@ -9,8 +9,6 @@ create table if not exists users (
     updated_at timestamp
 );
 
-alter table users alter column active set default true;
-
 create index if not exists idx_users_email on users(email);
 
 create or replace trigger trg_user_created

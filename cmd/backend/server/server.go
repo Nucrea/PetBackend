@@ -28,14 +28,14 @@ func NewServer(opts NewServerOpts) *httpserver.Server {
 	r := gin.New()
 	r.ContextWithFallback = true // Use it to allow getting values from c.Request.Context()
 
-	// r.Static("/webapp", "./webapp")
+	metrics := integrations.NewMetrics("backend")
+	serverMetrics := httpserver.NewServerMetrics(metrics)
+
 	r.GET("/health", handlers.New200OkHandler())
+	r.Any("/metrics", gin.WrapH(metrics.HttpHandler()))
 
-	prometheus := integrations.NewPrometheus()
-	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
-
-	r.Use(httpserver.NewRecoveryMiddleware(opts.Logger, prometheus, opts.DebugMode))
-	r.Use(httpserver.NewRequestLogMiddleware(opts.Logger, opts.Tracer, prometheus))
+	r.Use(httpserver.NewRecoveryMiddleware(opts.Logger, serverMetrics, opts.DebugMode))
+	r.Use(httpserver.NewRequestLogMiddleware(opts.Logger, opts.Tracer, serverMetrics))
 	r.Use(httpserver.NewTracingMiddleware(opts.Tracer))
 
 	r.GET("/verify-user", handlers.NewUserVerifyEmailHandler(opts.Logger, opts.UserService))

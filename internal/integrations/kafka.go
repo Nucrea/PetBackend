@@ -26,7 +26,7 @@ func NewKafka(addr, topic string) *Kafka {
 	}
 }
 
-func (k *Kafka) SendMessage(ctx context.Context, key string, value []byte) error {
+func (k *Kafka) PushMessage(ctx context.Context, key string, value []byte) error {
 	return k.writer.WriteMessages(
 		context.Background(),
 		kafka.Message{

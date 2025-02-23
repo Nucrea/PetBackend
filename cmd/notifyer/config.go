@@ -8,6 +8,7 @@ func LoadConfig(filePath string) (Config, error) {
 
 type Config struct {
 	App struct {
+		Port       uint16 `yaml:"port"`
 		LogFile    string `yaml:"logFile"`
 		ServiceUrl string `yaml:"serviceUrl"`
 	}

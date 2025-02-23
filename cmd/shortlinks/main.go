@@ -10,7 +10,6 @@ import (
 	"backend/pkg/cache"
 	"backend/pkg/logger"
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -37,7 +36,6 @@ func main() {
 		rootCmd.MarkPersistentFlagRequired("config")
 
 		rootCmd.PersistentFlags().StringVarP(&logPath, "logfile", "l", "", "path to log file")
-		rootCmd.MarkPersistentFlagRequired("logfile")
 
 		if err := rootCmd.Execute(); err != nil {
 			panic(err)
@@ -79,32 +77,32 @@ func main() {
 }
 
 func RunServer(ctx context.Context, log logger.Logger, tracer trace.Tracer, conf IConfig, shortlinkService services.ShortlinkService) {
-	host := fmt.Sprintf("http://localhost:%d", conf.GetHttpPort())
 	debugMode := true
 	if !debugMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	prometheus := integrations.NewPrometheus()
+	metrics := integrations.NewMetrics("shortlinks")
+	serverMetrics := httpserver.NewServerMetrics(metrics)
 
 	r := gin.New()
-	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
+	r.Any("/metrics", gin.WrapH(metrics.HttpHandler()))
 	r.GET("/health", func(ctx *gin.Context) {
 		ctx.Status(200)
 	})
 
-	r.Use(httpserver.NewRecoveryMiddleware(log, prometheus, debugMode))
-	r.Use(httpserver.NewRequestLogMiddleware(log, tracer, prometheus))
+	r.Use(httpserver.NewRecoveryMiddleware(log, serverMetrics, debugMode))
+	r.Use(httpserver.NewRequestLogMiddleware(log, tracer, serverMetrics))
 	r.Use(httpserver.NewTracingMiddleware(tracer))
 
 	linkGroup := r.Group("/s")
-	linkGroup.POST("/new", NewShortlinkCreateHandler(log, shortlinkService, host))
+	linkGroup.POST("/new", NewShortlinkCreateGinHandler(log, shortlinkService, conf.GetServiceUrl()))
 	linkGroup.GET("/:linkId", NewShortlinkResolveHandler(log, shortlinkService))
 
 	grpcUnderlying := grpc.NewServer()
 	shortlinks.RegisterShortlinksServer(
 		grpcUnderlying,
-		NewShortlinksGrpc(log, shortlinkService, host),
+		NewShortlinksGrpc(log, shortlinkService, conf.GetServiceUrl()),
 	)
 
 	httpServer := httpserver.New(

@@ -35,7 +35,7 @@ func (e *EventRepo) sendEmail(ctx context.Context, email, actionToken, eventType
 		return err
 	}
 
-	return e.kafka.SendMessage(ctx, eventType, valueBytes)
+	return e.kafka.PushMessage(ctx, eventType, valueBytes)
 }
 
 func (e *EventRepo) SendEmailPasswordChanged(ctx context.Context, email string) error {

@@ -1,12 +1,13 @@
 app:
-  serviceUrl: "http://localhost:8080"
+  port: 8081
+  serviceUrl: "http://backend:8080"
 kafka:
   brokers:
-   - localhost:9091
+   - kafka:9091
   topic: events
   consumerGroupId: notifyer-group
 smtp:
-  server: localhost
+  server: smtp4dev
   port: 12333
   login: "maillogin"
   password: "mailpass"
