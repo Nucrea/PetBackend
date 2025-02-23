@@ -3,7 +3,6 @@ package httpserver
 // Modified recovery from gin, use own logger
 
 import (
-	"backend/internal/integrations"
 	"backend/pkg/logger"
 	"bytes"
 	"errors"
@@ -30,12 +29,12 @@ var (
 	slash     = []byte("/")
 )
 
-func NewRecoveryMiddleware(logger logger.Logger, prometheus *integrations.Prometheus, debugMode bool) gin.HandlerFunc {
+func NewRecoveryMiddleware(logger logger.Logger, serverMetrics *ServerMetrics, debugMode bool) gin.HandlerFunc {
 	handle := defaultHandleRecovery
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				prometheus.AddPanic()
+				serverMetrics.AddPanic()
 
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.

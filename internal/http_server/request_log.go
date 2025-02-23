@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"backend/internal/integrations"
 	log "backend/pkg/logger"
 	"fmt"
 	"time"
@@ -11,10 +10,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus *integrations.Prometheus) gin.HandlerFunc {
+func NewRequestLogMiddleware(
+	logger log.Logger,
+	tracer trace.Tracer,
+	serverMetrics *ServerMetrics,
+) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		prometheus.RequestInc()
-		defer prometheus.RequestDec()
+		serverMetrics.AddRequest()
 
 		requestId := c.GetHeader("X-Request-Id")
 		if requestId == "" {
@@ -34,7 +36,7 @@ func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus 
 		c.Next()
 		latency := time.Since(start)
 
-		prometheus.AddRequestTime(float64(latency.Microseconds()))
+		serverMetrics.AddRequestTime(float64(latency.Microseconds()))
 
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
@@ -49,12 +51,12 @@ func NewRequestLogMiddleware(logger log.Logger, tracer trace.Tracer, prometheus 
 		}
 
 		if statusCode >= 400 && statusCode < 500 {
-			prometheus.Add4xxError()
+			serverMetrics.Add4xxError()
 			ctxLogger.Warning().Msg(msg)
 			return
 		}
 
-		prometheus.Add5xxError()
+		serverMetrics.Add5xxError()
 		ctxLogger.Error().Msg(msg)
 	}
 }

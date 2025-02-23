@@ -1,4 +1,5 @@
 app:
+  port: 8082
   serviceUrl: "http://localhost:8080"
 kafka:
   brokers:

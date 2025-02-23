@@ -85,16 +85,17 @@ func RunServer(ctx context.Context, log logger.Logger, tracer trace.Tracer, conf
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	prometheus := integrations.NewPrometheus()
+	metrics := integrations.NewMetrics("shortlinks")
+	serverMetrics := httpserver.NewServerMetrics(metrics)
 
 	r := gin.New()
-	r.Any("/metrics", gin.WrapH(prometheus.GetRequestHandler()))
+	r.Any("/metrics", gin.WrapH(metrics.HttpHandler()))
 	r.GET("/health", func(ctx *gin.Context) {
 		ctx.Status(200)
 	})
 
-	r.Use(httpserver.NewRecoveryMiddleware(log, prometheus, debugMode))
-	r.Use(httpserver.NewRequestLogMiddleware(log, tracer, prometheus))
+	r.Use(httpserver.NewRecoveryMiddleware(log, serverMetrics, debugMode))
+	r.Use(httpserver.NewRequestLogMiddleware(log, tracer, serverMetrics))
 	r.Use(httpserver.NewTracingMiddleware(tracer))
 
 	linkGroup := r.Group("/s")
