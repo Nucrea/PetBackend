@@ -35,8 +35,8 @@ func (u *shortlinkRepo) AddShortlink(ctx context.Context, dto ShortlinkDTO) erro
 	_, span := u.tracer.Start(ctx, "postgres::AddShortlink")
 	defer span.End()
 
-	query := `insert into shortlinks (url, expires_at) values ($1, $2);`
-	_, err := u.db.ExecContext(ctx, query, dto.Url, dto.ExpiresAt)
+	query := `insert into shortlinks (id, url, expires_at) values ($1, $2, $3);`
+	_, err := u.db.ExecContext(ctx, query, dto.Id, dto.Url, dto.ExpiresAt)
 	return err
 }
 
@@ -72,7 +72,7 @@ func (u *shortlinkRepo) DeleteExpiredShortlinks(ctx context.Context, limit int) 
 		where id in (
 			select id
 				from shortlinks
-				where current_date > expiration
+				where current_date > expires_at
 				limit $1
 		)
 		returning *
