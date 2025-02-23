@@ -1,7 +1,6 @@
 package main
 
 import (
-	"backend/cmd/backend/args_parser"
 	"backend/cmd/backend/server"
 	"backend/internal/core/models"
 	"backend/internal/core/repos"
@@ -55,7 +54,7 @@ func (a *App) Run(p RunParams) {
 
 	//-----------------------------------------
 
-	args, err := args_parser.Parse(osArgs)
+	args, err := CmdArgsParse(osArgs)
 	if err != nil {
 		log.Fatalf("failed to parse os args: %v\n", err)
 	}
@@ -90,7 +89,7 @@ func (a *App) Run(p RunParams) {
 
 	var key *rsa.PrivateKey
 	{
-		keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
+		keyRawBytes, err := os.ReadFile(args.GetSigningKeyPath())
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed reading signing key file")
 		}

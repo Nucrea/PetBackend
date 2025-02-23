@@ -36,7 +36,6 @@ func main() {
 		rootCmd.MarkPersistentFlagRequired("config")
 
 		rootCmd.PersistentFlags().StringVarP(&logPath, "logfile", "l", "", "path to log file")
-		rootCmd.MarkPersistentFlagRequired("logfile")
 
 		if err := rootCmd.Execute(); err != nil {
 			panic(err)

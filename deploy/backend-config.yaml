@@ -1,0 +1,5 @@
+port: 8080
+postgres_url: "postgres://postgres:postgres@postgres:5432/postgres"
+jwt_signing_key: "./backend-jwt-privkey"
+kafka_url: "kafka:9091"
+kafka_topic: "events"

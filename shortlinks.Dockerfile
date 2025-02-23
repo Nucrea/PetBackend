@@ -4,19 +4,18 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
-COPY cmd/backend cmd/backend
+COPY cmd/shortlinks cmd/shortlinks
 COPY pkg pkg
 COPY internal internal
 
-RUN GOEXPERIMENT=boringcrypto go build -ldflags "-s -w" -o ./app ./cmd/backend
+RUN GOEXPERIMENT=boringcrypto go build -ldflags "-s -w" -o ./app ./cmd/shortlinks
 RUN chmod +x ./app
 
 FROM alpine:3.21.2 AS production
 WORKDIR /backend
 
 COPY --from=builder /build/app .
-COPY cmd/backend/config.yaml .
-COPY cmd/backend/jwt_signing_key .
+COPY deploy/shortlinks-config.yaml ./config.yaml
 
 EXPOSE 8080
 

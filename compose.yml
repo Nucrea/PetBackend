@@ -31,45 +31,22 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
 
-  grafana:
-    image: grafana/grafana:11.1.4
-    shm_size: 256mb
-    ports:
-      - 3000:3000
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - grafana-volume:/var/lib/grafana
-      - ./deploy/grafana-ds.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-
-  prometheus:
-    image: prom/prometheus:v2.54.0
-    shm_size: 256mb
-    user: root
-    ports:
-      - 9090:9090
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - prometheus-volume:/etc/prometheus
-      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
-
-  node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    pid: host
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - 9100:9100
+  # node_exporter:
+  #   image: quay.io/prometheus/node-exporter:latest
+  #   pid: host
+  #   command:
+  #     - '--path.procfs=/host/proc'
+  #     - '--path.rootfs=/rootfs'
+  #     - '--path.sysfs=/host/sys'
+  #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+  #   volumes:
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /:/rootfs:ro
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   ports:
+  #     - 9100:9100
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.108.0
@@ -81,25 +58,6 @@ services:
       - 13133:13133 # health_check extension
       # - 4317:4317 # OTLP gRPC receiver
       - 4318:4318 # OTLP http receiver
-
-  tempo-init:
-    image: &tempoImage grafana/tempo:r177-60780f7
-    user: root
-    entrypoint:
-      - "chown"
-      - "10001:10001"
-      - "/var/tempo"
-    volumes:
-      - tempo-volume:/var/tempo
-
-  tempo:
-    image: *tempoImage
-    command: [ "-config.file=/etc/tempo.yaml" ]
-    volumes:
-      - ./deploy/tempo.yaml:/etc/tempo.yaml
-      - tempo-volume:/var/tempo
-    depends_on:
-      - tempo-init
 
   kafka:
     image: &kafkaImage apache/kafka:3.8.0
@@ -133,35 +91,34 @@ services:
     entrypoint: >
       /bin/bash -c "/opt/kafka/bin/kafka-topics.sh --bootstrap-server http://kafka:9092 --create --topic events --partitions 6"
 
+  # minio:
+  #   image: quay.io/minio/minio:latest
+  #   command: ["server", "/data", "--console-address", ":9001"]
+  #   healthcheck:
+  #     test: 'mc ready local'
+  #     interval: 1s
+  #   environment:
+  #     MINIO_ROOT_USER: miniouser
+  #     MINIO_ROOT_PASSWORD: miniouser
+  #     MINIO_ACCESS_KEY: miniokey
+  #     MINIO_SECRET_KEY: miniokey
+  #   ports:
+  #     - 9000:9000
+  #     - 9001:9001
+  #   volumes:
+  #     - minio-volume:/data
 
-  minio:
-    image: quay.io/minio/minio:latest
-    command: ["server", "/data", "--console-address", ":9001"]
-    healthcheck:
-      test: 'mc ready local'
-      interval: 1s
-    environment:
-      MINIO_ROOT_USER: miniouser
-      MINIO_ROOT_PASSWORD: miniouser
-      MINIO_ACCESS_KEY: miniokey
-      MINIO_SECRET_KEY: miniokey
-    ports:
-      - 9000:9000
-      - 9001:9001
-    volumes:
-      - minio-volume:/data
-
-  minio-init:
-    image: quay.io/minio/mc:latest
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 miniouser miniouser;
-      /usr/bin/mc mb minio/bucket;
-      /usr/bin/mc anonymous set public minio/bucket;
-      exit 0;
-      "
+  # minio-init:
+  #   image: quay.io/minio/mc:latest
+  #   depends_on:
+  #     - minio
+  #   entrypoint: >
+  #     /bin/sh -c "
+  #     /usr/bin/mc alias set myminio http://minio:9000 miniouser miniouser;
+  #     /usr/bin/mc mb minio/bucket;
+  #     /usr/bin/mc anonymous set public minio/bucket;
+  #     exit 0;
+  #     "
 
   smtp4dev:
     image: rnwood/smtp4dev:v3
@@ -179,9 +136,35 @@ services:
       - RelayOptions__Login=maillogin
       - RelayOptions__Password=mailpass
 
+  backend:
+    build: 
+      dockerfile: ./backend.Dockerfile
+      context: .
+    ports:
+      - 8080:8080
+    volumes:
+      - ./deploy/backend-config.yaml:/backend/config.yaml
+      - ./deploy/backend-jwt-privkey:/backend/backend-jwt-privkey
+
+  notifyer:
+    build: 
+      dockerfile: ./notifyer.Dockerfile
+      context: .
+    ports:
+      - 8081:8081
+    volumes:
+      - ./deploy/notifyer-config.yaml:/backend/config.yaml
+
+  shortlinks:
+    build: 
+      dockerfile: ./shortlinks.Dockerfile
+      context: .
+    ports:
+      - 8082:8082 #http
+      - 8083:8083 #grpc
+    volumes:
+      - ./deploy/notifyer-config.yaml:/backend/config.yaml
+
 volumes:
   postgres-volume:
-  grafana-volume:
-  tempo-volume:
-  prometheus-volume:
   minio-volume:
