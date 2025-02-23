@@ -10,7 +10,6 @@ import (
 	"backend/pkg/cache"
 	"backend/pkg/logger"
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -79,7 +78,6 @@ func main() {
 }
 
 func RunServer(ctx context.Context, log logger.Logger, tracer trace.Tracer, conf IConfig, shortlinkService services.ShortlinkService) {
-	host := fmt.Sprintf("http://localhost:%d", conf.GetHttpPort())
 	debugMode := true
 	if !debugMode {
 		gin.SetMode(gin.ReleaseMode)
@@ -99,13 +97,13 @@ func RunServer(ctx context.Context, log logger.Logger, tracer trace.Tracer, conf
 	r.Use(httpserver.NewTracingMiddleware(tracer))
 
 	linkGroup := r.Group("/s")
-	linkGroup.POST("/new", NewShortlinkCreateHandler(log, shortlinkService, host))
+	linkGroup.POST("/new", NewShortlinkCreateGinHandler(log, shortlinkService, conf.GetServiceUrl()))
 	linkGroup.GET("/:linkId", NewShortlinkResolveHandler(log, shortlinkService))
 
 	grpcUnderlying := grpc.NewServer()
 	shortlinks.RegisterShortlinksServer(
 		grpcUnderlying,
-		NewShortlinksGrpc(log, shortlinkService, host),
+		NewShortlinksGrpc(log, shortlinkService, conf.GetServiceUrl()),
 	)
 
 	httpServer := httpserver.New(

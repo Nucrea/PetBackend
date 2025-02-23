@@ -10,7 +10,7 @@ import (
 
 func NewShortlinksGrpc(log logger.Logger, shortlinkService services.ShortlinkService, host string) *ShortlinksGrpc {
 	return &ShortlinksGrpc{
-		handler: NewCreateHandler(log, shortlinkService, host),
+		handler: NewShortlinkCreateHandler(log, shortlinkService, host),
 	}
 }
 
