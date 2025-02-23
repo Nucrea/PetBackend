@@ -14,7 +14,7 @@ const MSG_TEXT = `
 	<body>
 		<p>{{.Text}}</p>
 		{{if .Link}}
-		<a href="{{.Link}}">Click</a>link</p>
+		<a href="{{.Link}}">link</a>
 		{{end}}
 	</body>
 </html>
@@ -34,7 +34,7 @@ func NewEmailer(conf ConfigSMTP) (*Emailer, error) {
 	}
 	defer closer.Close()
 
-	htmlTemplate, err := template.New("verify-email").Parse(MSG_TEXT)
+	htmlTemplate, err := template.New("email").Parse(MSG_TEXT)
 	if err != nil {
 		return nil, err
 	}
@@ -52,22 +52,23 @@ type Emailer struct {
 	dialer       *gomail.Dialer
 }
 
-func (e *Emailer) SendRestorePassword(email, token string) error {
+func (e *Emailer) SendRestorePassword(email, link string) error {
 	return e.sendEmail("Restore your password", email, MailContent{
-		Text: "Token: " + token,
+		Text: "You received this message do request of password change. Use this link to change your password:",
+		Link: link,
 	})
 }
 
 func (e *Emailer) SendVerifyUser(email, link string) error {
 	return e.sendEmail("Verify your email", email, MailContent{
-		Text: "You recieved this message due to registration of account. Use this link to verify email:",
+		Text: "You received this message due to registration of account. Use this link to verify email:",
 		Link: link,
 	})
 }
 
 func (e *Emailer) SendPasswordChanged(email string) error {
 	return e.sendEmail("Password changed", email, MailContent{
-		Text: "You recieved this message due to password change",
+		Text: "Your password was successfully changed",
 	})
 }
 

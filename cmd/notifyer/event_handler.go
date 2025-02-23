@@ -78,7 +78,8 @@ func (e *EventHandler) handleEvent(ctx context.Context, msg kafka.Message) error
 	// TODO: add context somehow
 	switch string(msg.Key) {
 	case "email_forgot_password":
-		return e.emailer.SendRestorePassword(event.Email, event.Token)
+		link := fmt.Sprintf("%s/restore-password?token=%s", e.config.App.ServiceUrl, event.Token)
+		return e.emailer.SendRestorePassword(event.Email, link)
 	case "email_password_changed":
 		return e.emailer.SendPasswordChanged(event.Email)
 	case "email_verify_user":
