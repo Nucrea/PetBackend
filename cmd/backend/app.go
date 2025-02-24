@@ -1,8 +1,6 @@
 package main
 
 import (
-	"backend/cmd/backend/args_parser"
-	"backend/cmd/backend/config"
 	"backend/cmd/backend/server"
 	"backend/internal/core/models"
 	"backend/internal/core/repos"
@@ -21,10 +19,6 @@ import (
 	"runtime/pprof"
 	"syscall"
 	"time"
-
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	traceSdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type App struct{}
@@ -60,7 +54,7 @@ func (a *App) Run(p RunParams) {
 
 	//-----------------------------------------
 
-	args, err := args_parser.Parse(osArgs)
+	args, err := CmdArgsParse(osArgs)
 	if err != nil {
 		log.Fatalf("failed to parse os args: %v\n", err)
 	}
@@ -76,7 +70,7 @@ func (a *App) Run(p RunParams) {
 		log.Fatalf("failed to create logger object: %v\n", err)
 	}
 
-	conf, err := config.NewFromFile(args.GetConfigPath())
+	conf, err := LoadConfig(args.GetConfigPath())
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to parse config file")
 	}
@@ -95,7 +89,7 @@ func (a *App) Run(p RunParams) {
 
 	var key *rsa.PrivateKey
 	{
-		keyRawBytes, err := os.ReadFile(conf.GetJwtSigningKey())
+		keyRawBytes, err := os.ReadFile(args.GetSigningKeyPath())
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed reading signing key file")
 		}
@@ -107,22 +101,9 @@ func (a *App) Run(p RunParams) {
 		}
 	}
 
-	var tracer trace.Tracer
-	{
-		tracerExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL("http://localhost:4318"))
-		if err != nil {
-			logger.Fatal().Err(err).Msg("failed initializing tracer")
-		}
-
-		tracerProvider := traceSdk.NewTracerProvider(
-			traceSdk.WithSampler(traceSdk.TraceIDRatioBased(0.1)),
-			traceSdk.WithBatcher(
-				tracerExporter,
-				traceSdk.WithMaxQueueSize(8192),
-				traceSdk.WithMaxExportBatchSize(2048),
-			),
-		)
-		tracer = tracerProvider.Tracer("backend")
+	tracer, err := integrations.NewTracer("backend")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed initializing tracer")
 	}
 
 	// Build business-logic objects
@@ -140,39 +121,41 @@ func (a *App) Run(p RunParams) {
 			shortlinkRepo   = repos.NewShortlinkRepo(sqlDb, tracer)
 			eventRepo       = repos.NewEventRepo(kafka)
 
-			userCache  = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
-			jwtCache   = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
-			linksCache = cache.NewCacheInmem[string, string]()
+			userCache          = cache.NewCacheInmemSharded[models.UserDTO](cache.ShardingTypeInteger)
+			loginAttemptsCache = cache.NewCacheInmem[string, int]()
+			jwtCache           = cache.NewCacheInmemSharded[string](cache.ShardingTypeJWT)
+			linksCache         = cache.NewCacheInmem[string, string]()
 		)
 
 		// Periodically trigger cache cleanup
 		go func() {
-			tmr := time.NewTicker(5 * time.Minute)
+			tmr := time.NewTicker(15 * time.Minute)
 			defer tmr.Stop()
-
-			batchSize := 100
 
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-tmr.C:
-					userCache.CheckExpired(batchSize)
-					jwtCache.CheckExpired(batchSize)
-					linksCache.CheckExpired(batchSize)
+					userCache.CheckExpired()
+					jwtCache.CheckExpired()
+					linksCache.CheckExpired()
+					loginAttemptsCache.CheckExpired()
 				}
 			}
 		}()
 
 		userService = services.NewUserService(
 			services.UserServiceDeps{
-				Jwt:             jwtUtil,
-				Password:        passwordUtil,
-				UserRepo:        userRepo,
-				UserCache:       userCache,
-				JwtCache:        jwtCache,
-				EventRepo:       *eventRepo,
-				ActionTokenRepo: actionTokenRepo,
+				Jwt:                jwtUtil,
+				Password:           passwordUtil,
+				UserRepo:           userRepo,
+				UserCache:          userCache,
+				LoginAttemptsCache: loginAttemptsCache,
+				JwtCache:           jwtCache,
+				EventRepo:          *eventRepo,
+				ActionTokenRepo:    actionTokenRepo,
+				Logger:             logger,
 			},
 		)
 		shortlinkService = services.NewShortlinkSevice(
@@ -204,7 +187,7 @@ func (a *App) Run(p RunParams) {
 		}()
 	}
 
-	srv := server.New(
+	srv := server.NewServer(
 		server.NewServerOpts{
 			DebugMode:        debugMode,
 			Logger:           logger,

@@ -5,19 +5,22 @@ import (
 	"backend/internal/core/repos"
 	"backend/internal/core/utils"
 	"backend/pkg/cache"
+	"backend/pkg/logger"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 var (
-	ErrUserNotExists     = fmt.Errorf("no such user")
-	ErrUserExists        = fmt.Errorf("user with this login already exists")
-	ErrUserWrongPassword = fmt.Errorf("wrong password")
-	ErrUserWrongToken    = fmt.Errorf("bad user token")
-	ErrUserBadPassword   = fmt.Errorf("password must contain at least 8 characters")
+	ErrUserNotExists       = fmt.Errorf("no such user")
+	ErrUserExists          = fmt.Errorf("user with this login already exists")
+	ErrUserWrongPassword   = fmt.Errorf("wrong password")
+	ErrUserWrongToken      = fmt.Errorf("bad user token")
+	ErrUserBadPassword     = fmt.Errorf("password must contain at least 8 characters")
+	ErrUserEmailUnverified = fmt.Errorf("user has not verified email yet")
 	// ErrUserInternal = fmt.Errorf("unexpected error. contact tech support")
 )
 
@@ -28,11 +31,17 @@ const (
 type UserService interface {
 	CreateUser(ctx context.Context, params UserCreateParams) (*models.UserDTO, error)
 	AuthenticateUser(ctx context.Context, login, password string) (string, error)
-	ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error)
+	ValidateAuthToken(ctx context.Context, tokenStr string) (*models.UserDTO, error)
 
-	ForgotPassword(ctx context.Context, userId string) error
+	// TODO: implement user deactivation flow
+	// DeactivateUser(ctx context.Context, userId string) error
+
+	VerifyEmail(ctx context.Context, actionToken string) error
 	ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error
-	ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error
+	ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error
+
+	RequestRestorePassword(ctx context.Context, email string) error
+	RequestVerifyUser(ctx context.Context, email string) error
 }
 
 func NewUserService(deps UserServiceDeps) UserService {
@@ -40,13 +49,15 @@ func NewUserService(deps UserServiceDeps) UserService {
 }
 
 type UserServiceDeps struct {
-	Jwt             utils.JwtUtil
-	Password        utils.PasswordUtil
-	UserRepo        repos.UserRepo
-	UserCache       cache.Cache[string, models.UserDTO]
-	JwtCache        cache.Cache[string, string]
-	EventRepo       repos.EventRepo
-	ActionTokenRepo repos.ActionTokenRepo
+	Jwt                utils.JwtUtil
+	Password           utils.PasswordUtil
+	UserRepo           repos.UserRepo
+	UserCache          cache.Cache[string, models.UserDTO]
+	JwtCache           cache.Cache[string, string]
+	LoginAttemptsCache cache.Cache[string, int]
+	EventRepo          repos.EventRepo
+	ActionTokenRepo    repos.ActionTokenRepo
+	Logger             logger.Logger
 }
 
 type userService struct {
@@ -78,14 +89,18 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 	}
 
 	user := models.UserDTO{
-		Email:  params.Email,
-		Secret: string(secret),
-		Name:   params.Name,
+		Email:    strings.ToLower(params.Email),
+		Secret:   string(secret),
+		FullName: params.Name,
 	}
 
 	result, err := u.deps.UserRepo.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := u.sendEmailVerifyUser(ctx, result.Id, user.Email); err != nil {
+		u.deps.Logger.Error().Err(err).Msg("error occured on sending email")
 	}
 
 	u.deps.UserCache.Set(result.Id, *result, cache.Expiration{Ttl: userCacheTtl})
@@ -94,6 +109,22 @@ func (u *userService) CreateUser(ctx context.Context, params UserCreateParams) (
 }
 
 func (u *userService) AuthenticateUser(ctx context.Context, email, password string) (string, error) {
+	attempts, ok := u.deps.LoginAttemptsCache.Get(email)
+	if ok && attempts >= 4 {
+		return "", fmt.Errorf("too many bad login attempts")
+	}
+
+	token, err := u.authenticateUser(ctx, email, password)
+	if err != nil {
+		u.deps.LoginAttemptsCache.Set(email, attempts+1, cache.Expiration{Ttl: 30 * time.Second})
+		return "", err
+	}
+
+	u.deps.LoginAttemptsCache.Del(email)
+	return token, nil
+}
+
+func (u *userService) authenticateUser(ctx context.Context, email, password string) (string, error) {
 	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return "", err
@@ -104,6 +135,10 @@ func (u *userService) AuthenticateUser(ctx context.Context, email, password stri
 
 	if !u.deps.Password.Compare(password, user.Secret) {
 		return "", ErrUserWrongPassword
+	}
+
+	if !user.EmailVerified {
+		return "", ErrUserEmailUnverified
 	}
 
 	payload := utils.JwtPayload{UserId: user.Id}
@@ -117,43 +152,58 @@ func (u *userService) AuthenticateUser(ctx context.Context, email, password stri
 	return jwt, nil
 }
 
-func (u *userService) ForgotPassword(ctx context.Context, userId string) error {
-	user, err := u.getUserById(ctx, userId)
+func (u *userService) DeactivateUser(ctx context.Context, userId string) error {
+	err := u.deps.UserRepo.DeactivateUser(ctx, userId)
 	if err != nil {
 		return err
 	}
 
-	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(
-		ctx,
-		models.ActionTokenDTO{
-			UserId:     user.Id,
-			Value:      uuid.New().String(),
-			Target:     models.ActionTokenTargetForgotPassword,
-			Expiration: time.Now().Add(1 * time.Hour),
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	return u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, actionToken.Value)
+	u.deps.UserCache.Del(userId)
+	return nil
 }
 
-func (u *userService) ChangePasswordWithToken(ctx context.Context, userId, actionToken, newPassword string) error {
-	user, err := u.getUserById(ctx, userId)
+func (u *userService) VerifyEmail(ctx context.Context, actionToken string) error {
+	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetVerifyEmail)
 	if err != nil {
 		return err
 	}
+	if token == nil {
+		return fmt.Errorf("wrong action token")
+	}
 
-	code, err := u.deps.ActionTokenRepo.PopActionToken(ctx, userId, actionToken, models.ActionTokenTargetForgotPassword)
+	if err := u.deps.UserRepo.SetUserEmailVerified(ctx, token.UserId); err != nil {
+		return err
+	}
+
+	//TODO: log warnings somehow
+	u.deps.ActionTokenRepo.DeleteActionToken(ctx, token.Id)
+	return nil
+}
+
+func (u *userService) ChangePasswordWithToken(ctx context.Context, actionToken, newPassword string) error {
+	token, err := u.deps.ActionTokenRepo.GetActionToken(ctx, actionToken, models.ActionTokenTargetRestorePassword)
 	if err != nil {
 		return err
 	}
-	if code == nil {
-		return fmt.Errorf("wrong user access code")
+	if token == nil {
+		return fmt.Errorf("wrong action token")
 	}
 
-	return u.updatePassword(ctx, *user, newPassword)
+	user, err := u.getUserById(ctx, token.UserId)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return fmt.Errorf("no such user")
+	}
+
+	if err := u.updatePassword(ctx, *user, newPassword); err != nil {
+		return err
+	}
+
+	//TODO: log warnings somehow
+	u.deps.ActionTokenRepo.DeleteActionToken(ctx, token.Id)
+	return nil
 }
 
 func (u *userService) ChangePassword(ctx context.Context, userId, oldPassword, newPassword string) error {
@@ -181,10 +231,18 @@ func (u *userService) updatePassword(ctx context.Context, user models.UserDTO, n
 		return err
 	}
 
-	return u.deps.UserRepo.UpdateUser(ctx, user.Id, models.UserUpdateDTO{
-		Secret: newSecret,
-		Name:   user.Name,
-	})
+	if err = u.deps.UserRepo.UpdateUser(ctx, user.Id, models.UserUpdateDTO{
+		Secret:   newSecret,
+		FullName: user.FullName,
+	}); err != nil {
+		return err
+	}
+
+	if err := u.deps.EventRepo.SendEmailPasswordChanged(ctx, user.Email); err != nil {
+		u.deps.Logger.Error().Err(err).Msg("error occured on sending email")
+	}
+
+	return nil
 }
 
 func (u *userService) getUserById(ctx context.Context, userId string) (*models.UserDTO, error) {
@@ -205,7 +263,7 @@ func (u *userService) getUserById(ctx context.Context, userId string) (*models.U
 	return user, nil
 }
 
-func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*models.UserDTO, error) {
+func (u *userService) ValidateAuthToken(ctx context.Context, tokenStr string) (*models.UserDTO, error) {
 	if userId, ok := u.deps.JwtCache.Get(tokenStr); ok {
 		return u.getUserById(ctx, userId)
 	}
@@ -223,4 +281,58 @@ func (u *userService) ValidateToken(ctx context.Context, tokenStr string) (*mode
 	u.deps.JwtCache.Set(tokenStr, payload.UserId, cache.Expiration{ExpiresAt: payload.ExpiresAt.Time})
 
 	return user, nil
+}
+
+func (u *userService) RequestRestorePassword(ctx context.Context, email string) error {
+	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(
+		ctx,
+		models.ActionTokenDTO{
+			UserId:     user.Id,
+			Value:      uuid.New().String(),
+			Target:     models.ActionTokenTargetRestorePassword,
+			Expiration: time.Now().Add(15 * time.Minute),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return u.deps.EventRepo.SendEmailForgotPassword(ctx, user.Email, actionToken.Value)
+}
+
+func (u *userService) RequestVerifyUser(ctx context.Context, email string) error {
+	user, err := u.deps.UserRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return fmt.Errorf("no such user")
+	}
+	if user.EmailVerified {
+		return fmt.Errorf("user already verified")
+	}
+
+	return u.sendEmailVerifyUser(ctx, user.Id, user.Email)
+}
+
+func (u *userService) sendEmailVerifyUser(ctx context.Context, userId, email string) error {
+	actionToken, err := u.deps.ActionTokenRepo.CreateActionToken(
+		ctx,
+		models.ActionTokenDTO{
+			UserId:     userId,
+			Value:      uuid.New().String(),
+			Target:     models.ActionTokenTargetVerifyEmail,
+			Expiration: time.Now().Add(1 * time.Hour),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return u.deps.EventRepo.SendEmailVerifyUser(ctx, email, actionToken.Value)
 }

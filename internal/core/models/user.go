@@ -1,13 +1,14 @@
 package models
 
 type UserDTO struct {
-	Id     string
-	Email  string
-	Secret string
-	Name   string
+	Id            string
+	Email         string
+	EmailVerified bool
+	Secret        string
+	FullName      string
 }
 
 type UserUpdateDTO struct {
-	Secret string
-	Name   string
+	Secret   string
+	FullName string
 }

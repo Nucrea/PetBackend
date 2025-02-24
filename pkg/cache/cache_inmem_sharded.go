@@ -45,10 +45,9 @@ func (c *cacheInmemSharded[V]) Del(key string) {
 	c.getShard(key).Del(key)
 }
 
-func (c *cacheInmemSharded[V]) CheckExpired(batchSize int) {
-	size := batchSize / c.info.Shards
+func (c *cacheInmemSharded[V]) CheckExpired() {
 	for _, shard := range c.shards {
-		shard.CheckExpired(size)
+		shard.CheckExpired()
 	}
 }
 

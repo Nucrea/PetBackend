@@ -1,0 +1,14 @@
+app:
+  port: 8081
+  serviceUrl: "http://backend:8080"
+kafka:
+  brokers:
+   - kafka:9091
+  topic: events
+  consumerGroupId: notifyer-group
+smtp:
+  server: smtp4dev
+  port: 12333
+  login: "maillogin"
+  password: "mailpass"
+  email: "notifyer@example.com"

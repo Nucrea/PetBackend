@@ -1,0 +1,4 @@
+service_url: http://shortlinks:8082
+http_port: 8082
+grpc_port: 8083
+postgres_url: "postgres://postgres:postgres@postgres:5432/postgres"

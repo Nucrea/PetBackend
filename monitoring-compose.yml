@@ -1,0 +1,47 @@
+services:
+  grafana:
+    image: grafana/grafana:11.1.4
+    shm_size: 256mb
+    ports:
+      - 3000:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - grafana-volume:/var/lib/grafana
+      - ./deploy/grafana-ds.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    shm_size: 256mb
+    user: root
+    ports:
+      - 9090:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - prometheus-volume:/etc/prometheus
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  tempo-init:
+    image: &tempoImage grafana/tempo:r177-60780f7
+    user: root
+    entrypoint:
+      - "chown"
+      - "10001:10001"
+      - "/var/tempo"
+    volumes:
+      - tempo-volume:/var/tempo
+
+  tempo:
+    image: *tempoImage
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./deploy/tempo.yaml:/etc/tempo.yaml
+      - tempo-volume:/var/tempo
+    depends_on:
+      - tempo-init
+
+volumes:
+  grafana-volume:
+  tempo-volume:
+  prometheus-volume:

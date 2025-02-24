@@ -1,5 +1,5 @@
 create table if not exists shortlinks (
     id text primary key,
-    url text,
-    expiration date
+    url text not null,
+    expires_at timestamp not null
 );

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "./shortlinks";
+
+package shortlinks;
+
+service Shortlinks {
+  rpc Create (CreateRequest) returns (CreateResponse) {}
+}
+
+message CreateRequest {
+  string url = 1;
+}
+
+message CreateResponse {
+  string link = 1;
+}
